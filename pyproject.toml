@@ -9,6 +9,7 @@ dependencies = [
     "pillow>=10.0.0",
     "click>=8.1.0",
     "python-dotenv>=1.0.0",
+    "notion-client>=2.2.0",
 ]
 
 [project.optional-dependencies]
@@ -33,6 +34,10 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["venv", ".git", ".tox", "dist", "build", "*.egg"]
 
 [tool.mypy]
 python_version = "3.11"

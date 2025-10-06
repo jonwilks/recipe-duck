@@ -31,8 +31,8 @@ class RecipeProcessor:
             Template content as string
         """
         if template_path is None:
-            # Default to recipe_template.md in project root
-            template_path = Path(__file__).parent.parent.parent / "recipe_template.md"
+            # Default to recipe_template.md in templates directory
+            template_path = Path(__file__).parent / "templates" / "recipe_template.md"
 
         if not template_path.exists():
             raise FileNotFoundError(f"Template not found: {template_path}")

@@ -9,7 +9,7 @@ import pytest
 
 
 # Fixture paths
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 TEST_IMAGE = FIXTURES_DIR / "cookie-recipe-test.jpeg"
 
 
@@ -58,7 +58,7 @@ def test_cli_basic_usage(api_key, temp_output_dir):
     content = output_file.read_text()
 
     # Save recipe to tests/output with title-based filename
-    output_dir = Path(__file__).parent / "output"
+    output_dir = Path(__file__).parent.parent / "output"
     output_dir.mkdir(exist_ok=True)
 
     # Extract title from first line (remove leading # and strip whitespace)
@@ -125,7 +125,7 @@ def test_cli_missing_api_key():
 def test_template_conformance(api_key, temp_output_dir):
     """Test that output conforms to the master template structure."""
     output_file = temp_output_dir / "recipe.md"
-    template_file = Path(__file__).parent.parent / "recipe_template.md"
+    template_file = Path(__file__).parent.parent.parent / "src" / "recipe_duck" / "templates" / "recipe_template.md"
 
     # Run CLI
     result = subprocess.run(
