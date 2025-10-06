@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from recipe_duck.processor import RecipeProcessor
+from recipe_duck.notion_client import NotionRecipeClient
 
 
 @click.command()
@@ -25,11 +26,29 @@ from recipe_duck.processor import RecipeProcessor
     default="claude-3-5-sonnet-20241022",
     help="Claude model to use",
 )
+@click.option(
+    "--notion",
+    is_flag=True,
+    help="Push recipe to Notion database (requires NOTION_API_KEY and NOTION_DATABASE_ID env vars)",
+)
+@click.option(
+    "--notion-api-key",
+    envvar="NOTION_API_KEY",
+    help="Notion API key (or set NOTION_API_KEY env var)",
+)
+@click.option(
+    "--notion-database-id",
+    envvar="NOTION_DATABASE_ID",
+    help="Notion database ID (or set NOTION_DATABASE_ID env var)",
+)
 def main(
     image_path: Path,
     output: Optional[Path],
     api_key: Optional[str],
     model: str,
+    notion: bool,
+    notion_api_key: Optional[str],
+    notion_database_id: Optional[str],
 ) -> None:
     """Convert a recipe image to structured markdown format.
 
@@ -41,18 +60,36 @@ def main(
             "API key required. Set ANTHROPIC_API_KEY environment variable or use --api-key"
         )
 
-    # Default output path
-    if output is None:
-        output = image_path.with_suffix(".md")
-
     click.echo(f"Processing recipe image: {image_path}")
 
     processor = RecipeProcessor(api_key=api_key, model=model)
 
     try:
         markdown_content = processor.process_image(image_path)
-        output.write_text(markdown_content)
-        click.echo(f"✓ Recipe saved to: {output}")
+
+        # Save to file if output path provided or notion flag not set
+        if output or not notion:
+            if output is None:
+                output = image_path.with_suffix(".md")
+            output.write_text(markdown_content)
+            click.echo(f"✓ Recipe saved to: {output}")
+
+        # Push to Notion if requested
+        if notion:
+            if not notion_api_key or not notion_database_id:
+                raise click.ClickException(
+                    "Notion integration requires --notion-api-key and --notion-database-id "
+                    "(or NOTION_API_KEY and NOTION_DATABASE_ID env vars)"
+                )
+
+            click.echo("Pushing recipe to Notion...")
+            notion_client = NotionRecipeClient(
+                api_key=notion_api_key,
+                database_id=notion_database_id
+            )
+            page_url = notion_client.push_recipe(markdown_content)
+            click.echo(f"✓ Recipe added to Notion: {page_url}")
+
     except Exception as e:
         raise click.ClickException(f"Failed to process recipe: {e}")
 

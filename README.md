@@ -1,10 +1,10 @@
 # Recipe Duck 🦆
 
-Convert recipe images to structured markdown using AI.
+Convert recipe images to structured markdown using AI, with optional Notion database integration.
 
 ## Overview
 
-Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them into a standardized markdown format. It uses Claude's vision capabilities to understand ingredients, instructions, and metadata from recipe images.
+Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them into a standardized markdown format. It uses Claude's vision capabilities to understand ingredients, instructions, and metadata from recipe images. You can save recipes as markdown files or push them directly to a Notion database.
 
 ## Setup
 
@@ -12,6 +12,7 @@ Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them
 
 - Python 3.11 or higher
 - Anthropic API key ([get one here](https://console.anthropic.com/))
+- (Optional) Notion API key and database ID for Notion integration
 
 ### Installation
 
@@ -32,18 +33,25 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e .
 ```
 
-4. Set up your API key:
+4. Set up your API keys:
 ```bash
 cp .env.example .env
-# Edit .env and add your Anthropic API key
+# Edit .env and add your API keys:
+# - ANTHROPIC_API_KEY (required)
+# - NOTION_API_KEY (optional, for Notion integration)
+# - NOTION_DATABASE_ID (optional, for Notion integration)
 ```
 
-Or export it directly:
+Or export them directly:
 ```bash
 export ANTHROPIC_API_KEY=your_api_key_here
+export NOTION_API_KEY=your_notion_key_here
+export NOTION_DATABASE_ID=your_database_id_here
 ```
 
 ## Usage
+
+### Markdown Output
 
 Basic usage:
 ```bash
@@ -61,6 +69,32 @@ Use a different model:
 ```bash
 recipe-duck recipe.jpg --model claude-3-opus-20240229
 ```
+
+### Notion Integration
+
+Push recipe directly to Notion database:
+```bash
+recipe-duck recipe.jpg --notion
+```
+
+This will:
+1. Extract the recipe from the image using AI
+2. Create a new page in your Notion database with the recipe name as the title
+3. Add ingredients, instructions, and notes as page content
+
+You can also save to markdown AND push to Notion:
+```bash
+recipe-duck recipe.jpg -o my-recipe.md --notion
+```
+
+#### Setting up Notion
+
+1. Create a Notion integration at https://www.notion.so/my-integrations
+2. Copy the API key (starts with `ntn_`)
+3. Create or select a database for recipes
+4. Share the database with your integration
+5. Copy the database ID from the URL (the part before `?v=`)
+6. Add both to your `.env` file
 
 ## Development
 
