@@ -65,7 +65,27 @@ Specify output location:
 recipe-duck recipe.jpg -o my-recipes/chocolate-cake.md
 ```
 
-Use a different model:
+Use cheaper AI model (75% cost savings):
+```bash
+recipe-duck recipe.jpg --cheap
+```
+
+Disable deterministic formatting (see [Formatting](#formatting) below):
+```bash
+recipe-duck recipe.jpg --no-format
+```
+
+Enable verbose logging (shows timing, token usage, and costs):
+```bash
+recipe-duck recipe.jpg -v
+```
+
+Combine options:
+```bash
+recipe-duck recipe.jpg --cheap --notion -v
+```
+
+Advanced: Use a specific model (overrides `--cheap`):
 ```bash
 recipe-duck recipe.jpg --model claude-3-opus-20240229
 ```
@@ -149,6 +169,64 @@ The tool generates markdown in this format:
 
 - [Any additional notes, tips, or variations]
 ```
+
+## Formatting
+
+Recipe Duck applies **deterministic formatting** by default to ensure consistency across all extracted recipes:
+
+### What Gets Normalized
+
+- **Units**: Abbreviated units are expanded to their full form
+  - `tbsp` → `tablespoon`, `tsp` → `teaspoon`
+  - `oz` → `ounce`, `lb` → `pound`
+  - `c` → `cup`, `pt` → `pint`, `qt` → `quart`
+
+- **Fractions**: Unicode and decimal fractions are converted to ASCII
+  - `½` → `1/2`, `¼` → `1/4`, `¾` → `3/4`
+  - `0.5` → `1/2`, `0.25` → `1/4`
+
+- **Pluralization**: Units are automatically pluralized based on quantity
+  - `2 tablespoon` → `2 tablespoons`
+  - `1 cup` → `1 cup` (singular)
+
+- **Numbered steps**: Instructions are always sequentially numbered (1., 2., 3., etc.)
+
+- **Bullet points**: Ingredients are always formatted with consistent bullet points (-)
+
+### Why Deterministic Formatting?
+
+This approach ensures:
+- **Consistency**: All recipes follow the same format regardless of source image style
+- **Searchability**: Standardized units and fractions make recipes easier to search
+- **Reliability**: No variation in output formatting between runs
+- **Portability**: Clean ASCII fractions work everywhere (unlike unicode characters)
+
+### Customization
+
+The formatting rules are defined in `src/recipe_duck/config.py` with sensible defaults. You can:
+
+1. **Disable formatting** entirely with the `--no-format` flag:
+   ```bash
+   recipe-duck recipe.jpg --no-format
+   ```
+
+2. **Customize rules** programmatically by providing a custom `FormattingConfig`:
+   ```python
+   from recipe_duck.config import FormattingConfig
+   from recipe_duck.processor import RecipeProcessor
+
+   custom_config = FormattingConfig(
+       unit_normalizations={"T": "tablespoon", "t": "teaspoon"},
+       pluralize_units=False,
+   )
+
+   processor = RecipeProcessor(
+       api_key="your-key",
+       formatting_config=custom_config
+   )
+   ```
+
+3. **Edit defaults** in `src/recipe_duck/config.py` to change project-wide behavior
 
 ## License
 
