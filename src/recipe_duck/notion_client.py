@@ -57,15 +57,23 @@ class NotionRecipeClient:
         servings_match = re.search(r'\*\*Servings:\*\*\s*([^\n*]+)', markdown)
 
         # Extract ingredients section
-        ingredients_match = re.search(r'##\s+Ingredients\s*\n(.*?)(?=##|$)', markdown, re.DOTALL)
+        ingredients_match = re.search(r'##\s+Ingredients\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
         ingredients = ingredients_match.group(1).strip() if ingredients_match else ""
 
         # Extract instructions section
-        instructions_match = re.search(r'##\s+Instructions\s*\n(.*?)(?=##|$)', markdown, re.DOTALL)
+        instructions_match = re.search(r'##\s+Instructions\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
         instructions = instructions_match.group(1).strip() if instructions_match else ""
 
+        # Extract photos section
+        photos_match = re.search(r'##\s+Photos\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        photos = photos_match.group(1).strip() if photos_match else ""
+
+        # Extract sources section
+        sources_match = re.search(r'##\s+Sources\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        sources = sources_match.group(1).strip() if sources_match else ""
+
         # Extract notes section
-        notes_match = re.search(r'##\s+Notes\s*\n(.*?)(?=##|$)', markdown, re.DOTALL)
+        notes_match = re.search(r'##\s+Notes\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
         notes = notes_match.group(1).strip() if notes_match else ""
 
         return {
@@ -76,20 +84,29 @@ class NotionRecipeClient:
             "servings": servings_match.group(1).strip() if servings_match else "",
             "ingredients": ingredients,
             "instructions": instructions,
+            "photos": photos,
+            "sources": sources,
             "notes": notes,
         }
 
-    def push_recipe(self, markdown: str) -> str:
+    def push_recipe(self, markdown: str, verbose: bool = False) -> str:
         """
         Push recipe to Notion database.
 
         Args:
             markdown: Recipe markdown string
+            verbose: Enable verbose logging
 
         Returns:
             URL of the created Notion page
         """
         recipe_data = self.parse_recipe_markdown(markdown)
+
+        if verbose:
+            import sys
+            print(f"📋 Recipe name: {recipe_data['name']}", file=sys.stderr)
+            print(f"🥘 Ingredients: {len(recipe_data['ingredients'].split(chr(10)))} lines", file=sys.stderr)
+            print(f"📝 Instructions: {len(recipe_data['instructions'].split(chr(10)))} lines", file=sys.stderr)
 
         # Build properties - only Name is required, rest are optional multi-select
         properties = {
@@ -105,10 +122,21 @@ class NotionRecipeClient:
         }
 
         # Create page in Notion database
+        if verbose:
+            import sys
+            print(f"🔨 Building Notion page blocks...", file=sys.stderr)
+
+        blocks = self._build_page_content(recipe_data)
+
+        if verbose:
+            import sys
+            print(f"📦 Created {len(blocks)} Notion blocks", file=sys.stderr)
+            print(f"🚀 Creating Notion page...", file=sys.stderr)
+
         new_page = self.client.pages.create(
             parent={"database_id": self.database_id},
             properties=properties,
-            children=self._build_page_content(recipe_data)
+            children=blocks
         )
 
         return new_page["url"]
@@ -125,7 +153,7 @@ class NotionRecipeClient:
         """
         blocks = []
 
-        # Add ingredients section
+        # Add ingredients section with circular bullets
         if recipe_data["ingredients"]:
             blocks.append({
                 "object": "block",
@@ -134,15 +162,28 @@ class NotionRecipeClient:
                     "rich_text": [{"type": "text", "text": {"content": "Ingredients"}}]
                 }
             })
+
+            # Parse ingredients into bulleted list items
+            ingredient_lines = [line.strip() for line in recipe_data["ingredients"].split("\n") if line.strip()]
+            for ingredient_line in ingredient_lines:
+                # Remove markdown bullet if present
+                ingredient_text = ingredient_line.lstrip("- *")
+                blocks.append({
+                    "object": "block",
+                    "type": "bulleted_list_item",
+                    "bulleted_list_item": {
+                        "rich_text": [{"type": "text", "text": {"content": ingredient_text}}]
+                    }
+                })
+
+            # Add divider
             blocks.append({
                 "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": recipe_data["ingredients"]}}]
-                }
+                "type": "divider",
+                "divider": {}
             })
 
-        # Add instructions section
+        # Add instructions section with numbered list
         if recipe_data["instructions"]:
             blocks.append({
                 "object": "block",
@@ -151,23 +192,89 @@ class NotionRecipeClient:
                     "rich_text": [{"type": "text", "text": {"content": "Instructions"}}]
                 }
             })
+
+            # Parse instructions into numbered list items
+            instruction_lines = [line.strip() for line in recipe_data["instructions"].split("\n") if line.strip()]
+            for instruction_line in instruction_lines:
+                # Skip horizontal rules
+                if instruction_line == "---":
+                    continue
+                # Remove markdown numbering if present
+                instruction_text = re.sub(r'^\d+\.\s*', '', instruction_line)
+                # Only add if there's actual content after removing numbering
+                if instruction_text.strip():
+                    blocks.append({
+                        "object": "block",
+                        "type": "numbered_list_item",
+                        "numbered_list_item": {
+                            "rich_text": [{"type": "text", "text": {"content": instruction_text}}]
+                        }
+                    })
+
+            # Add divider
+            blocks.append({
+                "object": "block",
+                "type": "divider",
+                "divider": {}
+            })
+
+        # Add photos section (always show header)
+        blocks.append({
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": "Photos"}}]
+            }
+        })
+        if recipe_data["photos"]:
             blocks.append({
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": recipe_data["instructions"]}}]
+                    "rich_text": [{"type": "text", "text": {"content": recipe_data["photos"]}}]
                 }
             })
 
-        # Add notes section
-        if recipe_data["notes"]:
+        # Add divider
+        blocks.append({
+            "object": "block",
+            "type": "divider",
+            "divider": {}
+        })
+
+        # Add sources section (always show header)
+        blocks.append({
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": "Sources"}}]
+            }
+        })
+        if recipe_data["sources"]:
             blocks.append({
                 "object": "block",
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"type": "text", "text": {"content": "Notes"}}]
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": recipe_data["sources"]}}]
                 }
             })
+
+        # Add divider
+        blocks.append({
+            "object": "block",
+            "type": "divider",
+            "divider": {}
+        })
+
+        # Add notes section (always show header)
+        blocks.append({
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": "Notes"}}]
+            }
+        })
+        if recipe_data["notes"]:
             blocks.append({
                 "object": "block",
                 "type": "paragraph",
