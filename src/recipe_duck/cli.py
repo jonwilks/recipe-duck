@@ -1,8 +1,10 @@
 """CLI entry point for recipe-duck."""
 
+import re
 import click
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 from recipe_duck.processor import RecipeProcessor
@@ -12,13 +14,53 @@ from recipe_duck.notion_client import NotionRecipeClient
 load_dotenv()
 
 
+def is_url(input_str: str) -> bool:
+    """Check if input string is a URL.
+
+    Args:
+        input_str: Input string to check
+
+    Returns:
+        True if input is a URL, False otherwise
+    """
+    return input_str.startswith(("http://", "https://"))
+
+
+def generate_filename_from_url(url: str) -> str:
+    """Generate a filename from a URL.
+
+    Args:
+        url: URL to parse
+
+    Returns:
+        Filename string (without extension)
+    """
+    parsed = urlparse(url)
+
+    # Extract meaningful name from URL path
+    path_parts = [p for p in parsed.path.strip("/").split("/") if p]
+    filename = "recipe"  # default
+
+    # Find best part of URL for filename (prefer later parts, skip numbers)
+    for part in reversed(path_parts):
+        if len(part) > 3 and not part.isdigit():
+            filename = part.replace("-", "_").replace(" ", "_")
+            break
+
+    # Clean filename - remove special chars
+    filename = re.sub(r"[^\w\-_]", "_", filename)
+    filename = re.sub(r"[_-]+", "_", filename).strip("_")
+
+    return filename
+
+
 @click.command()
-@click.argument("image_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("input_path", type=str)
 @click.option(
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output markdown file path (default: same name as image with .md extension)",
+    help="Output markdown file path (default: same name as input with .md extension)",
 )
 @click.option(
     "--api-key",
@@ -61,8 +103,18 @@ load_dotenv()
     is_flag=True,
     help="Enable verbose logging",
 )
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode (shows full prompts and API responses)",
+)
+@click.option(
+    "--debug-dir",
+    type=click.Path(path_type=Path),
+    help="Directory to write debug files (default: current directory)",
+)
 def main(
-    image_path: Path,
+    input_path: str,
     output: Optional[Path],
     api_key: Optional[str],
     cheap: bool,
@@ -72,10 +124,12 @@ def main(
     notion_database_id: Optional[str],
     no_format: bool,
     verbose: bool,
+    debug: bool,
+    debug_dir: Optional[Path],
 ) -> None:
-    """Convert a recipe image to structured markdown format.
+    """Convert a recipe image or URL to structured markdown format.
 
-    Takes an image file containing a recipe and uses AI to extract
+    Takes an image file or URL containing a recipe and uses AI to extract
     ingredients and instructions into a standardized markdown format.
     """
     if not api_key:
@@ -83,11 +137,26 @@ def main(
             "API key required. Set ANTHROPIC_API_KEY environment variable or use --api-key"
         )
 
-    if verbose:
-        click.echo(f"📷 Processing recipe image: {image_path}")
-        click.echo(f"📁 Image size: {image_path.stat().st_size / 1024:.1f} KB")
+    # Detect if input is a URL or file path
+    input_is_url = is_url(input_path)
+
+    # Validate input
+    if not input_is_url:
+        # Check if file exists
+        file_path = Path(input_path)
+        if not file_path.exists():
+            raise click.ClickException(f"File not found: {input_path}")
+
+        if verbose:
+            click.echo(f"📷 Processing recipe image: {input_path}")
+            click.echo(f"📁 Image size: {file_path.stat().st_size / 1024:.1f} KB")
+        else:
+            click.echo(f"Processing recipe image: {input_path}")
     else:
-        click.echo(f"Processing recipe image: {image_path}")
+        if verbose:
+            click.echo(f"🌐 Processing recipe from URL: {input_path}")
+        else:
+            click.echo(f"Processing recipe from URL: {input_path}")
 
     # Determine which model to use
     if model:
@@ -109,6 +178,12 @@ def main(
     if verbose:
         click.echo(f"✨ Formatting enabled: {not no_format}")
 
+    # Validate and create debug directory if needed
+    if debug and debug_dir:
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        if verbose:
+            click.echo(f"📁 Debug files will be written to: {debug_dir}")
+
     processor = RecipeProcessor(
         api_key=api_key,
         model=selected_model,
@@ -116,15 +191,27 @@ def main(
     )
 
     try:
-        if verbose:
+        if not input_is_url and verbose:
             click.echo("🔍 Encoding image...")
 
-        markdown_content = processor.process_image(image_path, verbose=verbose)
+        # Use unified process method
+        markdown_content = processor.process(input_path, verbose=verbose, debug=debug, debug_dir=debug_dir)
 
         # Save to file if output path provided or notion flag not set
         if output or not notion:
             if output is None:
-                output = image_path.with_suffix(".md")
+                # Generate output filename based on input type
+                if input_is_url:
+                    filename = generate_filename_from_url(input_path)
+                    base_filename = f"{filename}.md"
+                else:
+                    base_filename = Path(input_path).with_suffix(".md").name
+
+                # If debug mode is enabled and debug_dir is set, put output in debug_dir
+                if debug and debug_dir:
+                    output = debug_dir / base_filename
+                else:
+                    output = Path(base_filename)
 
             if verbose:
                 click.echo(f"💾 Writing markdown to: {output}")
