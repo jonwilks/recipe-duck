@@ -148,13 +148,13 @@ def main(
             raise click.ClickException(f"File not found: {input_path}")
 
         if verbose:
-            click.echo(f"📷 Processing recipe image: {input_path}")
-            click.echo(f"📁 Image size: {file_path.stat().st_size / 1024:.1f} KB")
+            click.echo(f"Processing recipe image: {input_path}")
+            click.echo(f"Image size: {file_path.stat().st_size / 1024:.1f} KB")
         else:
             click.echo(f"Processing recipe image: {input_path}")
     else:
         if verbose:
-            click.echo(f"🌐 Processing recipe from URL: {input_path}")
+            click.echo(f"Processing recipe from URL: {input_path}")
         else:
             click.echo(f"Processing recipe from URL: {input_path}")
 
@@ -163,26 +163,26 @@ def main(
         # Explicit model overrides everything
         selected_model = model
         if verbose:
-            click.echo(f"🤖 Using custom model: {selected_model}")
+            click.echo(f"Using custom model: {selected_model}")
     elif cheap:
         # Use cheap model (Haiku)
         selected_model = "claude-3-5-haiku-20241022"
         if verbose:
-            click.echo(f"💰 Using cheap model: {selected_model}")
+            click.echo(f"Using cheap model: {selected_model}")
     else:
         # Default to Sonnet
         selected_model = "claude-3-5-sonnet-20241022"
         if verbose:
-            click.echo(f"🤖 Using default model: {selected_model}")
+            click.echo(f"Using default model: {selected_model}")
 
     if verbose:
-        click.echo(f"✨ Formatting enabled: {not no_format}")
+        click.echo(f"Formatting enabled: {not no_format}")
 
     # Validate and create debug directory if needed
     if debug and debug_dir:
         debug_dir.mkdir(parents=True, exist_ok=True)
         if verbose:
-            click.echo(f"📁 Debug files will be written to: {debug_dir}")
+            click.echo(f"Debug files will be written to: {debug_dir}")
 
     processor = RecipeProcessor(
         api_key=api_key,
@@ -192,7 +192,7 @@ def main(
 
     try:
         if not input_is_url and verbose:
-            click.echo("🔍 Encoding image...")
+            click.echo("Encoding image...")
 
         # Use unified process method
         markdown_content = processor.process(input_path, verbose=verbose, debug=debug, debug_dir=debug_dir)
@@ -214,11 +214,11 @@ def main(
                     output = Path(base_filename)
 
             if verbose:
-                click.echo(f"💾 Writing markdown to: {output}")
-                click.echo(f"📝 Content size: {len(markdown_content)} characters")
+                click.echo(f"Writing markdown to: {output}")
+                click.echo(f"Content size: {len(markdown_content)} characters")
 
             output.write_text(markdown_content)
-            click.echo(f"✓ Recipe saved to: {output}")
+            click.echo(f"Recipe saved to: {output}")
 
         # Push to Notion if requested
         if notion:
@@ -229,8 +229,8 @@ def main(
                 )
 
             if verbose:
-                click.echo(f"📤 Pushing recipe to Notion...")
-                click.echo(f"🔑 Database ID: {notion_database_id[:8]}...")
+                click.echo(f"Pushing recipe to Notion...")
+                click.echo(f"Database ID: {notion_database_id[:8]}...")
             else:
                 click.echo("Pushing recipe to Notion...")
 
@@ -239,7 +239,7 @@ def main(
                 database_id=notion_database_id
             )
             page_url = notion_client.push_recipe(markdown_content, verbose=verbose)
-            click.echo(f"✓ Recipe added to Notion: {page_url}")
+            click.echo(f"Recipe added to Notion: {page_url}")
 
     except Exception as e:
         raise click.ClickException(f"Failed to process recipe: {e}")

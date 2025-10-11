@@ -83,14 +83,14 @@ class RecipeProcessor:
         """
         if verbose:
             import sys
-            print(f"🌐 Fetching recipe from URL: {url}", file=sys.stderr)
+            print(f"Fetching recipe from URL: {url}", file=sys.stderr)
 
         try:
             # Fetch the webpage
             html = self.url_extractor.fetch_page(url)
             if verbose:
                 import sys
-                print(f"📄 Downloaded {len(html)} bytes of HTML", file=sys.stderr)
+                print(f"Downloaded {len(html)} bytes of HTML", file=sys.stderr)
 
             # Extract clean text content
             content = self.url_extractor.extract_content(html)
@@ -104,42 +104,42 @@ class RecipeProcessor:
                 if verbose or debug:
                     import sys
                     print(
-                        f"⚠ Content too long ({len(content)} chars), truncating to {max_chars}",
+                        f"WARNING: Content too long ({len(content)} chars), truncating to {max_chars}",
                         file=sys.stderr,
                     )
                     print(
-                        f"⚠ Warning: Recipe content may be incomplete. Consider using a recipe site with cleaner HTML.",
+                        f"WARNING: Recipe content may be incomplete. Consider using a recipe site with cleaner HTML.",
                         file=sys.stderr,
                     )
                 content = content[:max_chars]
 
             if verbose:
                 import sys
-                print(f"📝 Extracted content: {len(content)} characters", file=sys.stderr)
+                print(f"Extracted content: {len(content)} characters", file=sys.stderr)
                 if original_length > max_chars:
-                    print(f"⚠ Truncated from {original_length} characters", file=sys.stderr)
+                    print(f"Truncated from {original_length} characters", file=sys.stderr)
 
             # Send to Claude for processing
             if verbose:
                 import sys
-                print(f"🤖 Processing with AI model: {self.model}", file=sys.stderr)
+                print(f"Processing with AI model: {self.model}", file=sys.stderr)
 
             markdown = self._extract_recipe_from_url(content, url, verbose=verbose, debug=debug, debug_dir=debug_dir)
 
             if verbose:
                 import sys
-                print(f"📄 Raw markdown length: {len(markdown)} characters", file=sys.stderr)
+                print(f"Raw markdown length: {len(markdown)} characters", file=sys.stderr)
 
             # Apply deterministic formatting if enabled
             if self.apply_formatting and self.formatter:
                 if verbose:
                     import sys
-                    print(f"✨ Applying deterministic formatting...", file=sys.stderr)
+                    print(f"Applying deterministic formatting...", file=sys.stderr)
                 markdown = self.formatter.format(markdown)
                 markdown = self.formatter.renumber_instructions(markdown)
                 if verbose:
                     import sys
-                    print(f"📄 Formatted markdown length: {len(markdown)} characters", file=sys.stderr)
+                    print(f"Formatted markdown length: {len(markdown)} characters", file=sys.stderr)
 
             return markdown
 
@@ -162,29 +162,29 @@ class RecipeProcessor:
         image_data = self._encode_image(image_path)
         if verbose:
             import sys
-            print(f"📊 Encoded image size: {len(image_data['source']['data'])} bytes", file=sys.stderr)
+            print(f"Encoded image size: {len(image_data['source']['data'])} bytes", file=sys.stderr)
 
         # Get structured recipe data from Claude
         if verbose:
             import sys
-            print(f"🤖 Calling AI model: {self.model}", file=sys.stderr)
+            print(f"Calling AI model: {self.model}", file=sys.stderr)
 
         markdown = self._extract_recipe(image_data, verbose=verbose, debug=debug, debug_dir=debug_dir)
 
         if verbose:
             import sys
-            print(f"📄 Raw markdown length: {len(markdown)} characters", file=sys.stderr)
+            print(f"Raw markdown length: {len(markdown)} characters", file=sys.stderr)
 
         # Apply deterministic formatting if enabled
         if self.apply_formatting and self.formatter:
             if verbose:
                 import sys
-                print(f"✨ Applying deterministic formatting...", file=sys.stderr)
+                print(f"Applying deterministic formatting...", file=sys.stderr)
             markdown = self.formatter.format(markdown)
             markdown = self.formatter.renumber_instructions(markdown)
             if verbose:
                 import sys
-                print(f"📄 Formatted markdown length: {len(markdown)} characters", file=sys.stderr)
+                print(f"Formatted markdown length: {len(markdown)} characters", file=sys.stderr)
 
         return markdown
 
@@ -303,7 +303,7 @@ IMPORTANT FORMATTING GUIDELINES:
                 f.write(f"IMAGE DATA: {len(image_data['source']['data'])} bytes (base64 encoded)\n")
                 f.write("="*80 + "\n")
 
-            print(f"🐛 Debug: Prompt written to {debug_prompt_file}", file=sys.stderr)
+            print(f"Debug: Prompt written to {debug_prompt_file}", file=sys.stderr)
 
         import time
         start_time = time.time()
@@ -343,7 +343,7 @@ IMPORTANT FORMATTING GUIDELINES:
 
             total_cost = input_cost + output_cost
             if total_cost > 0:
-                print(f"💰 Estimated cost: ${total_cost:.4f}", file=sys.stderr)
+                print(f"Estimated cost: ${total_cost:.4f}", file=sys.stderr)
 
         # Extract text from response
         content = message.content[0].text if message.content else ""
@@ -364,7 +364,7 @@ IMPORTANT FORMATTING GUIDELINES:
                 f.write(content)
                 f.write("\n\n" + "="*80 + "\n")
 
-            print(f"🐛 Debug: Response written to {debug_response_file}", file=sys.stderr)
+            print(f"Debug: Response written to {debug_response_file}", file=sys.stderr)
 
         return content
 
@@ -448,7 +448,7 @@ IMPORTANT FORMATTING GUIDELINES:
                 f.write(prompt)
                 f.write("\n\n" + "="*80 + "\n")
 
-            print(f"🐛 Debug: Prompt (including extracted webpage content) written to {debug_prompt_file}", file=sys.stderr)
+            print(f"Debug: Prompt (including extracted webpage content) written to {debug_prompt_file}", file=sys.stderr)
 
         import time
 
@@ -470,9 +470,9 @@ IMPORTANT FORMATTING GUIDELINES:
         if verbose:
             import sys
 
-            print(f"⏱️  API call completed in {elapsed:.2f}s", file=sys.stderr)
-            print(f"📊 Input tokens: {message.usage.input_tokens}", file=sys.stderr)
-            print(f"📊 Output tokens: {message.usage.output_tokens}", file=sys.stderr)
+            print(f"API call completed in {elapsed:.2f}s", file=sys.stderr)
+            print(f"Input tokens: {message.usage.input_tokens}", file=sys.stderr)
+            print(f"Output tokens: {message.usage.output_tokens}", file=sys.stderr)
 
             # Calculate approximate cost
             if "sonnet" in self.model.lower():
@@ -487,7 +487,7 @@ IMPORTANT FORMATTING GUIDELINES:
 
             total_cost = input_cost + output_cost
             if total_cost > 0:
-                print(f"💰 Estimated cost: ${total_cost:.4f}", file=sys.stderr)
+                print(f"Estimated cost: ${total_cost:.4f}", file=sys.stderr)
 
         # Extract text from response
         content = message.content[0].text if message.content else ""
@@ -508,6 +508,6 @@ IMPORTANT FORMATTING GUIDELINES:
                 f.write(content)
                 f.write("\n\n" + "="*80 + "\n")
 
-            print(f"🐛 Debug: Response written to {debug_response_file}", file=sys.stderr)
+            print(f"Debug: Response written to {debug_response_file}", file=sys.stderr)
 
         return content
