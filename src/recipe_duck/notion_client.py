@@ -104,9 +104,9 @@ class NotionRecipeClient:
 
         if verbose:
             import sys
-            print(f"📋 Recipe name: {recipe_data['name']}", file=sys.stderr)
-            print(f"🥘 Ingredients: {len(recipe_data['ingredients'].split(chr(10)))} lines", file=sys.stderr)
-            print(f"📝 Instructions: {len(recipe_data['instructions'].split(chr(10)))} lines", file=sys.stderr)
+            print(f"Recipe name: {recipe_data['name']}", file=sys.stderr)
+            print(f"Ingredients: {len(recipe_data['ingredients'].split(chr(10)))} lines", file=sys.stderr)
+            print(f"Instructions: {len(recipe_data['instructions'].split(chr(10)))} lines", file=sys.stderr)
 
         # Build properties - only Name is required, rest are optional multi-select
         properties = {

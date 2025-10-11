@@ -1,4 +1,4 @@
-# Recipe Duck 🦆
+# Recipe Duck
 
 Convert recipe images to structured markdown using AI, with optional Notion database integration.
 
@@ -88,6 +88,53 @@ recipe-duck recipe.jpg --cheap --notion -v
 Advanced: Use a specific model (overrides `--cheap`):
 ```bash
 recipe-duck recipe.jpg --model claude-3-opus-20240229
+```
+
+### Debugging
+
+Enable debug mode to troubleshoot extraction issues. Debug mode writes detailed files showing exactly what the AI sees and returns:
+
+```bash
+# Write debug files to current directory
+recipe-duck recipe.jpg --debug
+
+# Write debug files to specific directory (recommended - keeps your workspace clean)
+recipe-duck recipe.jpg --debug --debug-dir ./debug
+
+# Works with URLs too
+recipe-duck https://example.com/recipe --debug --debug-dir ./debug
+```
+
+When using `--debug` with `--debug-dir`, all output files go to the debug directory:
+
+**For image extraction:**
+- `debug_prompt_image.txt` - The full prompt sent to Claude, including instructions
+- `debug_response_image.txt` - Claude's raw markdown response (before formatting)
+- `recipe.md` - The final formatted recipe output
+
+**For URL extraction:**
+- `debug_prompt_url.txt` - The full prompt including extracted webpage content (shows exactly what Claude sees from the webpage)
+- `debug_response_url.txt` - Claude's raw markdown response (before formatting)
+- `recipe_name.md` - The final formatted recipe output
+
+**Note:** If you specify `-o` (output path), that takes precedence over the debug directory.
+
+**When to use debug mode:**
+- Missing ingredients or instructions in output
+- Incorrect recipe extraction
+- Verifying what content was extracted from a webpage
+- Understanding how the AI interprets your recipes
+- Comparing prompts across different runs
+
+Example workflow:
+```bash
+# Extract recipe with debug enabled
+recipe-duck https://example.com/recipe --debug --debug-dir ./debug -o output.md
+
+# Review the files:
+# 1. Check debug/debug_prompt_url.txt to see what webpage content was extracted
+# 2. Check debug/debug_response_url.txt to see Claude's raw output
+# 3. Compare with output.md (the final formatted version)
 ```
 
 ### Notion Integration

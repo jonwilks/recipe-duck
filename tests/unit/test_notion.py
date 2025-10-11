@@ -72,14 +72,22 @@ def test_parse_recipe_markdown_minimal():
     assert result["notes"] == ""
 
 
-def test_notion_client_requires_api_key():
+def test_notion_client_requires_api_key(monkeypatch):
     """Test that NotionRecipeClient requires API key."""
+    # Clear environment variables
+    monkeypatch.delenv("NOTION_API_KEY", raising=False)
+    monkeypatch.delenv("NOTION_DATABASE_ID", raising=False)
+
     with pytest.raises(ValueError, match="Notion API key is required"):
         NotionRecipeClient(api_key=None, database_id="test_db_id")
 
 
-def test_notion_client_requires_database_id():
+def test_notion_client_requires_database_id(monkeypatch):
     """Test that NotionRecipeClient requires database ID."""
+    # Clear environment variables
+    monkeypatch.delenv("NOTION_API_KEY", raising=False)
+    monkeypatch.delenv("NOTION_DATABASE_ID", raising=False)
+
     with pytest.raises(ValueError, match="Notion database ID is required"):
         NotionRecipeClient(api_key="test_api_key", database_id=None)
 
@@ -96,22 +104,37 @@ def test_build_page_content():
         "servings": "4",
         "ingredients": "- Ingredient 1\n- Ingredient 2",
         "instructions": "1. Step 1\n2. Step 2",
+        "photos": "",
+        "sources": "",
         "notes": "Some notes here",
     }
 
     blocks = client._build_page_content(recipe_data)
 
-    # Should have 6 blocks: 3 headings + 3 content blocks
-    assert len(blocks) == 6
+    # Should have:
+    # - Ingredients heading + 2 bullet items + divider = 4
+    # - Instructions heading + 2 numbered items + divider = 4
+    # - Photos heading + divider = 2
+    # - Sources heading + divider = 2
+    # - Notes heading + paragraph = 2
+    # Total = 14
+    assert len(blocks) == 14
 
-    # Check headings
-    assert blocks[0]["type"] == "heading_2"
-    assert blocks[0]["heading_2"]["rich_text"][0]["text"]["content"] == "Ingredients"
-    assert blocks[2]["type"] == "heading_2"
-    assert blocks[2]["heading_2"]["rich_text"][0]["text"]["content"] == "Instructions"
-    assert blocks[4]["type"] == "heading_2"
-    assert blocks[4]["heading_2"]["rich_text"][0]["text"]["content"] == "Notes"
+    # Check that we have the right section headings
+    heading_blocks = [b for b in blocks if b["type"] == "heading_2"]
+    assert len(heading_blocks) == 5
 
-    # Check content
-    assert blocks[1]["type"] == "paragraph"
-    assert "Ingredient 1" in blocks[1]["paragraph"]["rich_text"][0]["text"]["content"]
+    heading_texts = [b["heading_2"]["rich_text"][0]["text"]["content"] for b in heading_blocks]
+    assert "Ingredients" in heading_texts
+    assert "Instructions" in heading_texts
+    assert "Photos" in heading_texts
+    assert "Sources" in heading_texts
+    assert "Notes" in heading_texts
+
+    # Check ingredients are bulleted list items
+    ingredient_blocks = [b for b in blocks if b["type"] == "bulleted_list_item"]
+    assert len(ingredient_blocks) == 2
+
+    # Check instructions are numbered list items
+    instruction_blocks = [b for b in blocks if b["type"] == "numbered_list_item"]
+    assert len(instruction_blocks) == 2
