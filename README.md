@@ -1,4 +1,4 @@
-# Recipe Duck 🦆
+# Recipe Duck
 
 Convert recipe images to structured markdown using AI, with optional Notion database integration.
 
