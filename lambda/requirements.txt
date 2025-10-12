@@ -1,0 +1,14 @@
+# Lambda function dependencies
+# Note: recipe-duck and its dependencies will be included via Lambda Layer
+
+# AWS SDK (included in Lambda runtime, but specifying for local testing)
+boto3>=1.34.0
+
+# These are already part of recipe-duck but listing for reference
+# anthropic>=0.40.0
+# pillow>=10.0.0
+# python-dotenv>=1.0.0
+# notion-client>=2.2.0
+# requests>=2.31.0
+# beautifulsoup4>=4.12.0
+# lxml>=4.9.0
