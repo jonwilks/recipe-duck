@@ -15,15 +15,39 @@ Recipe Duck is a Python CLI tool that converts recipe images into structured mar
   - Encodes images to base64 for API submission
   - Calls Anthropic's Claude API with vision capabilities
   - Uses a structured prompt template to ensure consistent markdown output
+  - Coordinates URL processing and print URL detection
+- **`src/recipe_duck/url_extractor.py`**: URL handling and print-friendly version detection:
+  - Fetches webpage HTML
+  - Implements hybrid print URL detection (pattern matching + LLM fallback)
+  - Caches successful patterns by domain
+  - Extracts clean text content from HTML
+- **`src/recipe_duck/config.py`**: Configuration classes for formatting and print URL detection
+- **`src/recipe_duck/formatter.py`**: Post-processing for deterministic formatting
 - **`src/recipe_duck/__init__.py`**: Package initialization and version info
 
 ### Data Flow
 
+**Image Processing:**
 1. User provides image path via CLI
 2. CLI validates input and loads API credentials
 3. `RecipeProcessor.process_image()` orchestrates:
    - Image loading and encoding (`_encode_image()`)
    - API call with vision model (`_extract_recipe()`)
+   - Returns markdown string
+4. CLI writes markdown to output file
+
+**URL Processing:**
+1. User provides recipe URL via CLI
+2. CLI validates input and loads API credentials
+3. `RecipeProcessor.process_url()` orchestrates:
+   - Print URL detection via `URLRecipeExtractor.find_best_url()`:
+     a. Check domain cache for known patterns
+     b. Try common print URL patterns (?print, ?printview, /wprm_print/slug, etc.)
+     c. If patterns fail, optionally use LLM to analyze HTML for print buttons
+     d. Fall back to original URL if nothing works
+   - Fetch webpage HTML from best URL
+   - Extract clean text content (remove scripts, nav, ads)
+   - API call with text extraction model (`_extract_recipe_from_url()`)
    - Returns markdown string
 4. CLI writes markdown to output file
 
@@ -82,6 +106,9 @@ mypy src/                 # Type check
 2. **Prompt-based formatting**: Markdown structure enforced via detailed prompt rather than post-processing
 3. **CLI-first design**: No web frontend to keep the tool lightweight and scriptable
 4. **Minimal image preprocessing**: Relies on Claude's robust image handling; only format conversion if needed
+5. **Hybrid print URL detection**: Combines fast pattern matching with intelligent LLM fallback for maximum success rate while minimizing API costs
+6. **Domain-level caching**: Remembers successful print URL patterns per domain to avoid repeated detection
+7. **Lambda-optimized logging**: Automatically enables verbose logging in AWS Lambda for CloudWatch visibility
 
 ## Extending the Project
 

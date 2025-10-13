@@ -8,7 +8,7 @@ from anthropic import Anthropic
 from PIL import Image
 
 from recipe_duck.formatter import RecipeFormatter
-from recipe_duck.config import FormattingConfig
+from recipe_duck.config import FormattingConfig, PrintURLConfig
 from recipe_duck.url_extractor import URLRecipeExtractor
 
 
@@ -22,13 +22,15 @@ class RecipeProcessor:
         template_path: Path | None = None,
         formatting_config: Optional[FormattingConfig] = None,
         apply_formatting: bool = True,
+        print_url_config: Optional[PrintURLConfig] = None,
     ):
         self.client = Anthropic(api_key=api_key)
         self.model = model
         self.template = self._load_template(template_path)
         self.apply_formatting = apply_formatting
         self.formatter = RecipeFormatter(formatting_config) if apply_formatting else None
-        self.url_extractor = URLRecipeExtractor()
+        self.print_url_config = print_url_config or PrintURLConfig()
+        self.url_extractor = URLRecipeExtractor(anthropic_client=self.client)
 
     def _load_template(self, template_path: Path | None) -> str:
         """Load the master recipe template.
@@ -86,8 +88,29 @@ class RecipeProcessor:
             print(f"Fetching recipe from URL: {url}", file=sys.stderr)
 
         try:
+            # Try to find print-friendly version if enabled
+            if self.print_url_config.enabled:
+                best_url, method = self.url_extractor.find_best_url(
+                    url,
+                    detection_model=self.print_url_config.detection_model,
+                    timeout_budget=self.print_url_config.timeout_budget,
+                    verbose=verbose,
+                )
+                if verbose:
+                    import sys
+                    if method != "original":
+                        print(f"[PRINT-URL] ✓ Using print-friendly URL | Method: {method}", file=sys.stderr)
+                        print(f"[PRINT-URL] URL: {best_url}", file=sys.stderr)
+                    else:
+                        print(f"[PRINT-URL] Using original URL (no print version found)", file=sys.stderr)
+            else:
+                best_url = url
+                if verbose:
+                    import sys
+                    print(f"[PRINT-URL] Print URL detection disabled", file=sys.stderr)
+
             # Fetch the webpage
-            html = self.url_extractor.fetch_page(url)
+            html = self.url_extractor.fetch_page(best_url)
             if verbose:
                 import sys
                 print(f"Downloaded {len(html)} bytes of HTML", file=sys.stderr)

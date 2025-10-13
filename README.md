@@ -137,6 +137,70 @@ recipe-duck https://example.com/recipe --debug --debug-dir ./debug -o output.md
 # 3. Compare with output.md (the final formatted version)
 ```
 
+### URL Processing (Recipe Websites)
+
+Recipe Duck can extract recipes directly from URLs:
+
+```bash
+recipe-duck https://www.budgetbytes.com/easy-dumpling-soup/
+```
+
+#### Print-Friendly URL Detection
+
+When processing URLs, Recipe Duck automatically tries to find print-friendly versions of recipe pages. Print versions typically remove ads, navigation, popups, and other clutter, resulting in:
+- **Better extraction quality** - Cleaner HTML means more reliable recipe parsing
+- **Lower token costs** - Less content to process = fewer API tokens used
+- **Faster processing** - Smaller pages load and process faster
+
+**How it works:**
+
+Recipe Duck uses a hybrid approach:
+1. **Pattern matching** (fast): Tries common print URL patterns like `?print`, `?printview`, `/wprm_print/slug`
+2. **Domain caching**: Remembers successful patterns for each website
+3. **LLM fallback**: If patterns fail, asks Claude to analyze the page HTML for print buttons
+4. **Graceful fallback**: If no print version exists, uses the original URL
+
+**Supported patterns:**
+- `?print` - Serious Eats, many food blogs
+- `?printview` - Allrecipes
+- `/wprm_print/[recipe-slug]` - WordPress Recipe Maker (Budget Bytes, Pinch of Yum, etc.)
+- `/print/` or `/print` - Various WordPress themes
+
+**Example verbose output:**
+```bash
+$ recipe-duck https://www.budgetbytes.com/easy-dumpling-soup/ -v
+
+[PRINT-URL] Starting search for: https://www.budgetbytes.com/easy-dumpling-soup/
+[PRINT-URL] Trying pattern 1/5: https://www.budgetbytes.com/easy-dumpling-soup?print
+[PRINT-URL] Trying pattern 2/5: https://www.budgetbytes.com/easy-dumpling-soup?printview
+[PRINT-URL] Trying pattern 3/5: https://www.budgetbytes.com/wprm_print/easy-dumpling-soup
+[PRINT-URL] ✓ Pattern match! | Method: pattern | Time: 0.34s
+[PRINT-URL] Using: https://www.budgetbytes.com/wprm_print/easy-dumpling-soup
+```
+
+**Configuration:**
+
+Disable print URL detection:
+```bash
+recipe-duck https://example.com/recipe --no-print-prefer
+```
+
+Use a different model for LLM-based detection:
+```bash
+recipe-duck https://example.com/recipe --print-detection-model claude-3-haiku-20240307
+```
+
+Environment variables (useful for Lambda deployments):
+```bash
+export RECIPE_DUCK_ENABLE_PRINT_SEARCH=false      # Disable feature
+export RECIPE_DUCK_PRINT_DETECTION_MODEL=claude-3-5-haiku-20241022  # Detection model
+export RECIPE_DUCK_PRINT_SEARCH_TIMEOUT=15        # Timeout budget in seconds
+```
+
+**Lambda/CloudWatch logging:**
+
+When running in AWS Lambda (detected via `AWS_LAMBDA_FUNCTION_NAME` environment variable), verbose logging is automatically enabled. All print URL detection steps will appear in CloudWatch logs with `[PRINT-URL]` prefixes for easy filtering.
+
 ### Notion Integration
 
 Push recipe directly to Notion database:

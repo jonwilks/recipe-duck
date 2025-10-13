@@ -57,23 +57,36 @@ class NotionRecipeClient:
         servings_match = re.search(r'\*\*Servings:\*\*\s*([^\n*]+)', markdown)
 
         # Extract ingredients section
-        ingredients_match = re.search(r'##\s+Ingredients\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        # Match until --- or next ## heading (but not ### subheadings)
+        # Use lookahead for ^--- and ^## to not consume them
+        ingredients_match = re.search(r'##\s+Ingredients\s*\n(.*?)(?=^---|^##\s[A-Z])', markdown, re.DOTALL | re.MULTILINE)
+        if not ingredients_match:
+            # Try without lookahead if at end of string
+            ingredients_match = re.search(r'##\s+Ingredients\s*\n(.*)', markdown, re.DOTALL | re.MULTILINE)
         ingredients = ingredients_match.group(1).strip() if ingredients_match else ""
 
         # Extract instructions section
-        instructions_match = re.search(r'##\s+Instructions\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        instructions_match = re.search(r'##\s+Instructions\s*\n(.*?)(?=^---|^##\s[A-Z])', markdown, re.DOTALL | re.MULTILINE)
+        if not instructions_match:
+            instructions_match = re.search(r'##\s+Instructions\s*\n(.*)', markdown, re.DOTALL | re.MULTILINE)
         instructions = instructions_match.group(1).strip() if instructions_match else ""
 
         # Extract photos section
-        photos_match = re.search(r'##\s+Photos\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        photos_match = re.search(r'##\s+Photos\s*\n(.*?)(?=^---|^##\s[A-Z])', markdown, re.DOTALL | re.MULTILINE)
+        if not photos_match:
+            photos_match = re.search(r'##\s+Photos\s*\n(.*)', markdown, re.DOTALL | re.MULTILINE)
         photos = photos_match.group(1).strip() if photos_match else ""
 
         # Extract sources section
-        sources_match = re.search(r'##\s+Sources\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        sources_match = re.search(r'##\s+Sources\s*\n(.*?)(?=^---|^##\s[A-Z])', markdown, re.DOTALL | re.MULTILINE)
+        if not sources_match:
+            sources_match = re.search(r'##\s+Sources\s*\n(.*)', markdown, re.DOTALL | re.MULTILINE)
         sources = sources_match.group(1).strip() if sources_match else ""
 
         # Extract notes section
-        notes_match = re.search(r'##\s+Notes\s*\n(.*?)(?=---|##|$)', markdown, re.DOTALL)
+        notes_match = re.search(r'##\s+Notes\s*\n(.*?)(?=^---|^##\s[A-Z])', markdown, re.DOTALL | re.MULTILINE)
+        if not notes_match:
+            notes_match = re.search(r'##\s+Notes\s*\n(.*)', markdown, re.DOTALL | re.MULTILINE)
         notes = notes_match.group(1).strip() if notes_match else ""
 
         return {
