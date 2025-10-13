@@ -124,20 +124,24 @@ class NotionRecipeClient:
         # Create page in Notion database
         if verbose:
             import sys
-            print(f"🔨 Building Notion page blocks...", file=sys.stderr)
+            print(f"Building Notion page blocks...", file=sys.stderr)
 
         blocks = self._build_page_content(recipe_data)
 
         if verbose:
             import sys
-            print(f"📦 Created {len(blocks)} Notion blocks", file=sys.stderr)
-            print(f"🚀 Creating Notion page...", file=sys.stderr)
+            print(f"Created {len(blocks)} Notion blocks", file=sys.stderr)
+            print(f"Creating Notion page...", file=sys.stderr)
 
         new_page = self.client.pages.create(
             parent={"database_id": self.database_id},
             properties=properties,
             children=blocks
         )
+
+        if verbose:
+            import sys
+            print(f"Recipe page created: {new_page['url']}", file=sys.stderr)
 
         return new_page["url"]
 

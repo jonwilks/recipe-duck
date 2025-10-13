@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40.0",
     "pillow>=10.0.0",
+    "pillow-heif>=0.10.0,<0.11.0",
     "click>=8.1.0",
     "python-dotenv>=1.0.0",
     "notion-client>=2.2.0",
@@ -29,6 +30,15 @@ recipe-duck = "recipe_duck.cli:main"
 [build-system]
 requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+recipe_duck = ["templates/*.md"]
 
 [tool.black]
 line-length = 100

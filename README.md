@@ -6,15 +6,21 @@ Convert recipe images to structured markdown using AI, with optional Notion data
 
 Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them into a standardized markdown format. It uses Claude's vision capabilities to understand ingredients, instructions, and metadata from recipe images. You can save recipes as markdown files or push them directly to a Notion database.
 
+**Two ways to use Recipe Duck:**
+- **CLI Tool** - Run locally from the command line
+- **Cloud Deployment** - Send recipes via email, automatically processed and added to Notion ([deployment guide](docs/DEPLOYMENT.md))
+
 ## Setup
 
-### Prerequisites
+### CLI Tool Setup
+
+#### Prerequisites
 
 - Python 3.11 or higher
 - Anthropic API key ([get one here](https://console.anthropic.com/))
 - (Optional) Notion API key and database ID for Notion integration
 
-### Installation
+#### Installation
 
 1. Clone the repository:
 ```bash
@@ -48,6 +54,39 @@ export ANTHROPIC_API_KEY=your_api_key_here
 export NOTION_API_KEY=your_notion_key_here
 export NOTION_DATABASE_ID=your_database_id_here
 ```
+
+### Cloud Deployment Setup
+
+Want to send recipes via email and have them automatically processed?
+
+Deploy Recipe Duck to AWS Lambda with email receiving via Amazon SES:
+
+```bash
+# 1. Deploy infrastructure with Terraform
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your configuration
+terraform init
+terraform apply
+
+# 2. Build and push Lambda container image
+cd ../lambda
+./build_and_push_container.sh
+
+# 3. Update Lambda to use the container image
+cd ../terraform
+terraform apply
+```
+
+See **[terraform/README.md](terraform/README.md)** for detailed infrastructure setup and **[lambda/README.md](lambda/README.md)** for Lambda deployment details.
+
+**Cloud features:**
+- Send recipe images/URLs via email
+- Automatic processing with Lambda
+- Direct Notion integration
+- Email whitelist security
+- Full iPhone HEIC image support
+- Costs approximately $1-2/month to operate
 
 ## Usage
 

@@ -56,3 +56,16 @@ dmypy.json
 Thumbs.db
 /debug
 .claude/settings.local.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars
+!terraform.tfvars.example
+
+# Lambda
+lambda/lambda_deployment.zip
+lambda/package/

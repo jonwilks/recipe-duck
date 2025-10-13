@@ -1,0 +1,46 @@
+# Recipe Duck Terraform Configuration Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "prod"
+
+# Email Configuration
+# The email address where you'll send recipe photos
+deployment_email = "recipes@yourdomain.com"
+
+# Your domain name (must match deployment_email domain)
+domain_name = "yourdomain.com"
+
+# Email Whitelist
+# Comma-separated list of allowed sender emails
+# Supports wildcards: *@company.com
+# Example: "alice@gmail.com,bob@yahoo.com,*@company.com"
+email_whitelist = "your-email@gmail.com"
+
+# API Keys (get these from respective services)
+# Anthropic API key from https://console.anthropic.com/
+anthropic_api_key = "sk-ant-your-key-here"
+
+# Notion integration token from https://www.notion.so/my-integrations
+notion_api_key = "ntn_your-key-here"
+
+# Notion database ID (from database URL)
+notion_database_id = "your-database-id-here"
+
+# Lambda Container Image URI
+# Leave empty initially, set after building container:
+# lambda_image_uri = "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/recipe-duck-lambda:latest"
+lambda_image_uri = ""
+
+# Optional: Customize AI model (default: claude-3-5-haiku-20241022)
+# anthropic_model = "claude-3-5-sonnet-20241022"  # More accurate but costlier
+# anthropic_model = "claude-3-5-haiku-20241022"   # Faster and cheaper
+
+# Optional: Customize Lambda settings
+# lambda_timeout = 300  # seconds (5 minutes)
+# lambda_memory  = 512  # MB
+
+# Optional: Email retention settings
+# delete_emails_after_processing = true  # Delete immediately after processing
+# email_retention_days = 1               # Backup retention if not deleted immediately
