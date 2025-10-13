@@ -26,7 +26,7 @@ class TestNotionRecipeClient:
 
 ---
 
-## Instructions
+## Directions
 
 1. Preheat oven to 350°F
 
@@ -49,12 +49,54 @@ Best served warm!
         assert result["total_time"] == "27 minutes"
         assert result["servings"] == "24 cookies"
         assert "2 cups - all-purpose flour" in result["ingredients"]
-        assert "Preheat oven to 350°F" in result["instructions"]
-        assert "Mix dry ingredients" in result["instructions"]
+        assert "Preheat oven to 350°F" in result["directions"]
+        assert "Mix dry ingredients" in result["directions"]
         assert "Best served warm!" in result["notes"]
 
-    def test_parse_instructions_with_subheadings(self):
-        """Test that instructions with ### subheadings are fully captured.
+    def test_parse_recipe_with_properties(self):
+        """Test parsing a recipe with the new properties line."""
+        markdown = """# Chicken Parmesan
+
+*Cuisine: Italian | Protein: Chicken | Course: Dinner | Cooking Method: Baking, Fry | Cook Time: 45 minutes*
+
+---
+
+## Ingredients
+
+- 2 - chicken breasts
+- 1 cup - marinara sauce
+- 1 cup - mozzarella cheese
+
+---
+
+## Directions
+
+1. Bread and fry the chicken
+
+2. Top with sauce and cheese
+
+3. Bake until cheese melts
+
+---
+
+## Notes
+
+Delicious Italian classic!
+"""
+        client = NotionRecipeClient(api_key="fake_key", database_id="fake_db_id")
+        result = client.parse_recipe_markdown(markdown)
+
+        assert result["name"] == "Chicken Parmesan"
+        assert result["cuisine"] == "Italian"
+        assert result["protein"] == "Chicken"
+        assert result["course"] == "Dinner"
+        assert result["cooking_method"] == "Baking, Fry"
+        assert result["cook_time_prop"] == "45 minutes"
+        assert "chicken breasts" in result["ingredients"]
+        assert "Bread and fry the chicken" in result["directions"]
+
+    def test_parse_directions_with_subheadings(self):
+        """Test that directions with ### subheadings are fully captured.
 
         This is a regression test for recipes with multiple cooking methods
         (e.g., Stove Top vs Instant Pot) that use subheadings.
@@ -76,7 +118,7 @@ Best served warm!
 
 ---
 
-## Instructions
+## Directions
 
 ### Stove Top Version:
 
@@ -104,16 +146,16 @@ Both methods work great!
         result = client.parse_recipe_markdown(markdown)
 
         # The bug: current regex stops at ### because it matches the "##" lookahead
-        # All instructions content should be captured, including subheadings
-        assert "### Stove Top Version:" in result["instructions"], \
+        # All directions content should be captured, including subheadings
+        assert "### Stove Top Version:" in result["directions"], \
             "Should capture Stove Top subheading"
-        assert "### Instant Pot Version:" in result["instructions"], \
+        assert "### Instant Pot Version:" in result["directions"], \
             "Should capture Instant Pot subheading"
-        assert "Heat one tablespoon of the stock" in result["instructions"], \
+        assert "Heat one tablespoon of the stock" in result["directions"], \
             "Should capture first stove top instruction"
-        assert "Turn on the Saute function" in result["instructions"], \
+        assert "Turn on the Saute function" in result["directions"], \
             "Should capture first instant pot instruction"
-        assert "Set the Instant Pot to manual high pressure" in result["instructions"], \
+        assert "Set the Instant Pot to manual high pressure" in result["directions"], \
             "Should capture last instant pot instruction"
 
     def test_parse_ingredients_with_subheadings(self):
@@ -134,7 +176,7 @@ Both methods work great!
 
 ---
 
-## Instructions
+## Directions
 
 1. Make the dough
 
@@ -159,7 +201,7 @@ Both methods work great!
 
 ---
 
-## Instructions
+## Directions
 
 1. Boil water
 
@@ -169,7 +211,7 @@ Both methods work great!
 
 ---
 
-## Sources
+## Links
 
 ---
 
@@ -182,9 +224,9 @@ Both methods work great!
 
         assert result["name"] == "Simple Recipe"
         assert "1 cup - water" in result["ingredients"]
-        assert "Boil water" in result["instructions"]
+        assert "Boil water" in result["directions"]
         assert result["photos"] == ""
-        assert result["sources"] == ""
+        assert result["links"] == ""
         assert result["notes"] == ""
 
     def test_parse_recipe_without_metadata(self):
@@ -197,7 +239,7 @@ Both methods work great!
 
 ---
 
-## Instructions
+## Directions
 
 1. Add salt
 

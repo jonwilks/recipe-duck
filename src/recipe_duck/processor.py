@@ -274,16 +274,23 @@ You MUST follow this exact template structure:
 Instructions:
 - Extract all text accurately from the image, preserving measurements and quantities
 - Fill in the template with the actual recipe information
+- Analyze the recipe and fill in the properties line with appropriate values:
+  * Cuisine: Choose from (Moroccan, Caribbean, Vietnamese, Turkish, Lebanese, Brazilian, Korean, Spanish, Thai, Indian, Southern, Greek, Mexican, French, American, Italian, Chinese)
+  * Protein: Choose from (Fish, Veg, Beef, Pork, Turkey, Chicken) - can be multiple separated by commas
+  * Course: Choose from (Dinner, Lunch, Breakfast, Sauce, Salad, Main Course, Soup, Dessert, Side, Appetizer, Beverage)
+  * Cooking Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Cook Time: Extract from image or estimate total cooking time in minutes
 - Use the exact section headers shown in the template including horizontal rules (---)
 - For Ingredients: Use bullet points (-) with format "[quantity] [unit] - [preparation/state] - [ingredient name]"
   Examples: "2 cups - finely chopped - onions", "1 tablespoon - melted - butter", "3 ounces - room temperature - cream cheese"
   If no preparation/state is specified, just use: "[quantity] [unit] - [ingredient name]"
-- For Instructions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
-- Add a blank line between each numbered instruction step
-- For Photos, Sources, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if clearly visible in the image
-- Be precise with ingredient amounts and instruction details
+- For Directions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
+- Add a blank line between each numbered direction step
+- For Photos, Links, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if clearly visible in the image
+- For Nutrition section: Estimate macros per serving based on the ingredients and quantities. Calculate rough estimates for calories, protein, carbs, and fat
+- Be precise with ingredient amounts and direction details
 - Do not add any text outside of this template structure
-- Include all sections: Ingredients, Instructions, Photos, Sources, and Notes with horizontal rules (---) between them
+- Include all sections: Ingredients, Directions, Notes, Links, Nutrition, and Photos with horizontal rules (---) between them
 
 CRITICAL - COMPLETENESS VERIFICATION:
 For Ingredients:
@@ -293,18 +300,18 @@ For Ingredients:
 4. If the image shows "X ingredients" or has a numbered/bulleted list, ensure you have exactly that many
 5. Double-check you haven't missed any ingredients, especially those at the end of lists or in multiple columns
 
-For Instructions:
-1. First, locate and count ALL instruction steps visible in the image
+For Directions:
+1. First, locate and count ALL direction steps visible in the image
 2. Extract every single step - do not skip any, especially not the final steps
-3. If the image has numbered instructions, preserve the original numbering (don't renumber)
+3. If the image has numbered directions, preserve the original numbering (don't renumber)
 4. After extraction, verify your step count matches what's visible in the image
-5. Pay special attention to capture the LAST instruction step - this is commonly missed
-6. Include all sub-steps and details from each instruction
+5. Pay special attention to capture the LAST direction step - this is commonly missed
+6. Include all sub-steps and details from each direction
 
 IMPORTANT FORMATTING GUIDELINES:
 - Write out abbreviated units (e.g., "2 tbsp" → "2 tablespoon", "1 tsp" → "1 teaspoon")
 - Use ASCII fractions instead of unicode (e.g., "½" → "1/2", "¼" → "1/4")
-- Use explicit numbered steps for instructions (1., 2., 3., etc.) with blank lines between steps
+- Use explicit numbered steps for directions (1., 2., 3., etc.) with blank lines between steps
 - Pluralize units when quantity is greater than 1 (e.g., "2 tablespoons", "3 cups")
 - Always include horizontal rules (---) between sections"""
 
@@ -418,19 +425,26 @@ You MUST follow this exact template structure:
 Instructions:
 - Extract ONLY recipe information (ignore ads, navigation, comments, related recipes)
 - Fill in the template with the actual recipe information
+- Analyze the recipe and fill in the properties line with appropriate values:
+  * Cuisine: Choose from (Moroccan, Caribbean, Vietnamese, Turkish, Lebanese, Brazilian, Korean, Spanish, Thai, Indian, Southern, Greek, Mexican, French, American, Italian, Chinese)
+  * Protein: Choose from (Fish, Veg, Beef, Pork, Turkey, Chicken) - can be multiple separated by commas
+  * Course: Choose from (Dinner, Lunch, Breakfast, Sauce, Salad, Main Course, Soup, Dessert, Side, Appetizer, Beverage)
+  * Cooking Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Cook Time: Extract from content or estimate total cooking time in minutes
 - Use the exact section headers shown in the template including horizontal rules (---)
 - For Ingredients: Use bullet points (-) with format "[quantity] [unit] - [preparation/state] - [ingredient name]"
   Examples: "2 cups - finely chopped - onions", "1 tablespoon - melted - butter", "3 ounces - room temperature - cream cheese"
   If no preparation/state is specified, just use: "[quantity] [unit] - [ingredient name]"
-- For Instructions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
-- Add a blank line between each numbered instruction step
-- For Photos, Sources, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if present in the extracted content
-- Be precise with ingredient amounts and instruction details
+- For Directions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
+- Add a blank line between each numbered direction step
+- For Photos, Links, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if present in the extracted content
+- For Nutrition section: Estimate macros per serving based on the ingredients and quantities. Calculate rough estimates for calories, protein, carbs, and fat
+- Be precise with ingredient amounts and direction details
 - If information is missing, omit that section entirely
 - Ensure measurements are clear and complete
 - Clean up any formatting issues or typos from source
 - Do not add any text outside of this template structure
-- Include all sections: Ingredients, Instructions, Photos, Sources, and Notes with horizontal rules (---) between them
+- Include all sections: Ingredients, Directions, Notes, Links, Nutrition, and Photos with horizontal rules (---) between them
 
 CRITICAL - COMPLETENESS VERIFICATION:
 For Ingredients:
@@ -440,18 +454,18 @@ For Ingredients:
 4. If the source shows "X ingredients" or has a numbered/bulleted list, ensure you have exactly that many
 5. Double-check you haven't missed any ingredients, especially those at the end of lists
 
-For Instructions:
-1. First, locate and count ALL instruction steps in the source content
+For Directions:
+1. First, locate and count ALL direction steps in the source content
 2. Extract every single step - do not skip any, especially not the final steps
-3. If the source has numbered instructions, preserve the original numbering (don't renumber)
+3. If the source has numbered directions, preserve the original numbering (don't renumber)
 4. After extraction, verify your step count matches the source
-5. Pay special attention to capture the LAST instruction step - this is commonly missed
-6. Include all sub-steps and details from each instruction
+5. Pay special attention to capture the LAST direction step - this is commonly missed
+6. Include all sub-steps and details from each direction
 
 IMPORTANT FORMATTING GUIDELINES:
 - Write out abbreviated units (e.g., "2 tbsp" → "2 tablespoon", "1 tsp" → "1 teaspoon")
 - Use ASCII fractions instead of unicode (e.g., "½" → "1/2", "¼" → "1/4")
-- Use explicit numbered steps for instructions (1., 2., 3., etc.) with blank lines between steps
+- Use explicit numbered steps for directions (1., 2., 3., etc.) with blank lines between steps
 - Pluralize units when quantity is greater than 1 (e.g., "2 tablespoons", "3 cups")
 - Always include horizontal rules (---) between sections"""
 
