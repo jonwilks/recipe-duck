@@ -1,5 +1,6 @@
 """Configuration for recipe formatting rules."""
 
+import os
 from dataclasses import dataclass, field
 from typing import Dict
 
@@ -104,5 +105,34 @@ class FormattingConfig:
     )
 
 
-# Default configuration instance
+@dataclass
+class PrintURLConfig:
+    """Configuration for print-friendly URL detection."""
+
+    # Enable print URL detection feature
+    enabled: bool = field(
+        default_factory=lambda: os.environ.get("RECIPE_DUCK_ENABLE_PRINT_SEARCH", "true").lower() == "true"
+    )
+
+    # Model to use for LLM-based print URL detection (fallback)
+    detection_model: str = field(
+        default_factory=lambda: os.environ.get(
+            "RECIPE_DUCK_PRINT_DETECTION_MODEL", "claude-3-5-haiku-20241022"
+        )
+    )
+
+    # Total time budget for print URL search (seconds)
+    timeout_budget: int = field(
+        default_factory=lambda: int(os.environ.get("RECIPE_DUCK_PRINT_SEARCH_TIMEOUT", "15"))
+    )
+
+    # Timeout for HEAD/GET validation requests (seconds)
+    head_timeout: int = 5
+
+    # Timeout for LLM detection request (seconds)
+    llm_timeout: int = 5
+
+
+# Default configuration instances
 DEFAULT_CONFIG = FormattingConfig()
+DEFAULT_PRINT_URL_CONFIG = PrintURLConfig()

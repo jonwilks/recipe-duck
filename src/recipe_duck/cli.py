@@ -1,5 +1,6 @@
 """CLI entry point for recipe-duck."""
 
+import os
 import re
 import click
 from pathlib import Path
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 
 from recipe_duck.processor import RecipeProcessor
 from recipe_duck.notion_client import NotionRecipeClient
+from recipe_duck.config import PrintURLConfig
 
 # Load .env file if present
 load_dotenv()
@@ -113,6 +115,16 @@ def generate_filename_from_url(url: str) -> str:
     type=click.Path(path_type=Path),
     help="Directory to write debug files (default: current directory)",
 )
+@click.option(
+    "--no-print-prefer",
+    is_flag=True,
+    help="Disable print-friendly URL detection (use original URL)",
+)
+@click.option(
+    "--print-detection-model",
+    default=None,
+    help="Model for print URL detection (default: claude-3-5-haiku-20241022)",
+)
 def main(
     input_path: str,
     output: Optional[Path],
@@ -126,6 +138,8 @@ def main(
     verbose: bool,
     debug: bool,
     debug_dir: Optional[Path],
+    no_print_prefer: bool,
+    print_detection_model: Optional[str],
 ) -> None:
     """Convert a recipe image or URL to structured markdown format.
 
@@ -136,6 +150,19 @@ def main(
         raise click.ClickException(
             "API key required. Set ANTHROPIC_API_KEY environment variable or use --api-key"
         )
+
+    # Force verbose logging when running in Lambda
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        verbose = True
+        if not input_is_url:
+            click.echo("[LAMBDA] Verbose logging enabled automatically for Lambda environment")
+
+    # Configure print URL detection
+    print_url_config = PrintURLConfig()
+    if no_print_prefer:
+        print_url_config.enabled = False
+    if print_detection_model:
+        print_url_config.detection_model = print_detection_model
 
     # Detect if input is a URL or file path
     input_is_url = is_url(input_path)
@@ -188,6 +215,7 @@ def main(
         api_key=api_key,
         model=selected_model,
         apply_formatting=not no_format,
+        print_url_config=print_url_config,
     )
 
     try:
