@@ -7,6 +7,13 @@ from typing import Any, Optional
 from anthropic import Anthropic
 from PIL import Image
 
+# Register HEIF support for iPhone images
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass  # HEIF support not available
+
 from recipe_duck.formatter import RecipeFormatter
 from recipe_duck.config import FormattingConfig, PrintURLConfig
 from recipe_duck.url_extractor import URLRecipeExtractor

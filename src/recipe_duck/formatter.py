@@ -34,7 +34,6 @@ class RecipeFormatter:
         in_instructions = False
 
         for line in lines:
-            # Track which section we're in
             if line.strip().startswith("## Ingredients"):
                 in_ingredients = True
                 in_instructions = False

@@ -1,0 +1,61 @@
+# Dockerfile for AWS Lambda container image with HEIC support
+# This builds a custom Lambda runtime with libheif for iPhone HEIC image processing
+
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install system dependencies for HEIC support
+RUN yum update -y && \
+    yum install -y \
+    gcc \
+    gcc-c++ \
+    make \
+    cmake \
+    wget \
+    tar \
+    gzip \
+    libjpeg-turbo-devel \
+    libpng-devel \
+    && yum clean all
+
+# Build and install libde265 (HEIC decoder dependency)
+RUN cd /tmp && \
+    wget https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz && \
+    tar xzf libde265-1.0.15.tar.gz && \
+    cd libde265-1.0.15 && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && rm -rf libde265-*
+
+# Build and install libheif (using older version compatible with CMake 2.8)
+RUN cd /tmp && \
+    wget https://github.com/strukturag/libheif/releases/download/v1.12.0/libheif-1.12.0.tar.gz && \
+    tar xzf libheif-1.12.0.tar.gz && \
+    cd libheif-1.12.0 && \
+    ./configure --prefix=/usr/local --disable-go && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && rm -rf libheif-*
+
+# Update library cache and set library path
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
+    echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local.conf
+
+# Copy recipe-duck package source (expects to be run from project root)
+COPY pyproject.toml setup.py* /tmp/recipe-duck/
+COPY src/ /tmp/recipe-duck/src/
+COPY MANIFEST.in /tmp/recipe-duck/
+
+# Install recipe-duck package first
+RUN pip install --no-cache-dir /tmp/recipe-duck && rm -rf /tmp/recipe-duck
+
+# Copy lambda handler and requirements
+COPY lambda/lambda_handler.py ${LAMBDA_TASK_ROOT}/
+COPY lambda/requirements.txt ${LAMBDA_TASK_ROOT}/
+
+# Install additional Lambda-specific dependencies
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Set the Lambda handler
+CMD ["lambda_handler.lambda_handler"]
