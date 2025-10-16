@@ -25,7 +25,7 @@ class RecipeProcessor:
     def __init__(
         self,
         api_key: str,
-        model: str = "claude-3-5-sonnet-20241022",
+        model: str = "claude-haiku-4-5",
         template_path: Path | None = None,
         formatting_config: Optional[FormattingConfig] = None,
         apply_formatting: bool = True,
@@ -285,13 +285,19 @@ Instructions:
   * Cuisine: Choose from (Moroccan, Caribbean, Vietnamese, Turkish, Lebanese, Brazilian, Korean, Spanish, Thai, Indian, Southern, Greek, Mexican, French, American, Italian, Chinese)
   * Protein: Choose from (Fish, Veg, Beef, Pork, Turkey, Chicken) - can be multiple separated by commas
   * Course: Choose from (Dinner, Lunch, Breakfast, Sauce, Salad, Main Course, Soup, Dessert, Side, Appetizer, Beverage)
-  * Cooking Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Effort: Estimate effort level - use 🔪 for quick/easy recipes (under 1 hour), 🔪🔪 for medium effort (over 1 hour), 🔪🔪🔪 for high effort (multi-day, overnight, or long marinating)
+  * Rating: Leave blank (will be filled by user)
   * Cook Time: Extract from image or estimate total cooking time in minutes
 - Use the exact section headers shown in the template including horizontal rules (---)
-- For Ingredients: Use bullet points (-) with format "[quantity] [unit] - [preparation/state] - [ingredient name]"
-  Examples: "2 cups - finely chopped - onions", "1 tablespoon - melted - butter", "3 ounces - room temperature - cream cheese"
-  If no preparation/state is specified, just use: "[quantity] [unit] - [ingredient name]"
+- For Ingredients: Use a markdown table with three columns: Ingredient | Measurement | Method
+  * Ingredient column: ingredient name (e.g., "all-purpose flour", "butter", "onions")
+  * Measurement column: quantity and unit (e.g., "2 cups", "1 tablespoon", "3 ounces") - leave blank if no measurement
+  * IMPORTANT: Use US Customary units ONLY - do NOT include metric conversions (no grams, milliliters, etc.)
+  * Method column: preparation/state (e.g., "finely chopped", "melted", "room temperature") - leave blank if not applicable
+  * If the recipe has multiple sections (e.g., "For the dough", "For the filling"), use ### subheadings followed by separate tables
 - For Directions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
+- If the recipe has distinct phases (e.g., "For the dough", "For the filling"), use ### subheadings to organize the directions
 - Add a blank line between each numbered direction step
 - For Photos, Links, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if clearly visible in the image
 - For Nutrition section: Estimate macros per serving based on the ingredients and quantities. Calculate rough estimates for calories, protein, carbs, and fat
@@ -347,7 +353,7 @@ IMPORTANT FORMATTING GUIDELINES:
 
         message = self.client.messages.create(
             model=self.model,
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[
                 {
                     "role": "user",
@@ -436,13 +442,19 @@ Instructions:
   * Cuisine: Choose from (Moroccan, Caribbean, Vietnamese, Turkish, Lebanese, Brazilian, Korean, Spanish, Thai, Indian, Southern, Greek, Mexican, French, American, Italian, Chinese)
   * Protein: Choose from (Fish, Veg, Beef, Pork, Turkey, Chicken) - can be multiple separated by commas
   * Course: Choose from (Dinner, Lunch, Breakfast, Sauce, Salad, Main Course, Soup, Dessert, Side, Appetizer, Beverage)
-  * Cooking Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Effort: Estimate effort level - use 🔪 for quick/easy recipes (under 1 hour), 🔪🔪 for medium effort (over 1 hour), 🔪🔪🔪 for high effort (multi-day, overnight, or long marinating)
+  * Rating: Leave blank (will be filled by user)
   * Cook Time: Extract from content or estimate total cooking time in minutes
 - Use the exact section headers shown in the template including horizontal rules (---)
-- For Ingredients: Use bullet points (-) with format "[quantity] [unit] - [preparation/state] - [ingredient name]"
-  Examples: "2 cups - finely chopped - onions", "1 tablespoon - melted - butter", "3 ounces - room temperature - cream cheese"
-  If no preparation/state is specified, just use: "[quantity] [unit] - [ingredient name]"
+- For Ingredients: Use a markdown table with three columns: Ingredient | Measurement | Method
+  * Ingredient column: ingredient name (e.g., "all-purpose flour", "butter", "onions")
+  * Measurement column: quantity and unit (e.g., "2 cups", "1 tablespoon", "3 ounces") - leave blank if no measurement
+  * IMPORTANT: Use US Customary units ONLY - do NOT include metric conversions (no grams, milliliters, etc.)
+  * Method column: preparation/state (e.g., "finely chopped", "melted", "room temperature") - leave blank if not applicable
+  * If the recipe has multiple sections (e.g., "For the dough", "For the filling"), use ### subheadings followed by separate tables
 - For Directions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
+- If the recipe has distinct phases (e.g., "For the dough", "For the filling"), use ### subheadings to organize the directions
 - Add a blank line between each numbered direction step
 - For Photos, Links, and Notes sections: Only include the heading and horizontal rules. Add content ONLY if present in the extracted content
 - For Nutrition section: Estimate macros per serving based on the ingredients and quantities. Calculate rough estimates for calories, protein, carbs, and fat
@@ -500,7 +512,7 @@ IMPORTANT FORMATTING GUIDELINES:
 
         message = self.client.messages.create(
             model=self.model,
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[
                 {
                     "role": "user",

@@ -197,8 +197,8 @@ def main(
         if verbose:
             click.echo(f"Using cheap model: {selected_model}")
     else:
-        # Default to Sonnet
-        selected_model = "claude-3-5-sonnet-20241022"
+        # Default to Haiku 4.5
+        selected_model = "claude-haiku-4-5"
         if verbose:
             click.echo(f"Using default model: {selected_model}")
 
