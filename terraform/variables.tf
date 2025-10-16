@@ -47,7 +47,7 @@ variable "notion_database_id" {
 variable "anthropic_model" {
   description = "Claude model to use for recipe processing"
   type        = string
-  default     = "claude-3-5-haiku-20241022"
+  default     = "claude-haiku-4-5"
 }
 
 variable "lambda_timeout" {

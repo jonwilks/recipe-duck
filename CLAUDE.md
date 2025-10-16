@@ -53,7 +53,7 @@ Recipe Duck is a Python CLI tool that converts recipe images into structured mar
 
 ### AI Integration
 
-The project uses Anthropic's Claude API with vision models (default: claude-3-5-sonnet-20241022). The `_extract_recipe()` method sends:
+The project uses Anthropic's Claude API with vision models (default: claude-haiku-4-5). The `_extract_recipe()` method sends:
 - Base64-encoded image
 - Structured prompt defining the exact markdown template
 - The AI handles both OCR and semantic understanding in a single call

@@ -22,6 +22,9 @@ secrets_client = boto3.client('secretsmanager')
 # Cache for secrets (Lambda container reuse)
 _secrets_cache: Dict[str, str] = {}
 
+# Match CLI default model unless explicitly overridden via environment.
+DEFAULT_MODEL = os.environ.get('ANTHROPIC_MODEL', 'claude-haiku-4-5')
+
 
 def get_secret(secret_name: str) -> str:
     """Retrieve secret from AWS Secrets Manager with caching.
@@ -210,22 +213,22 @@ def process_recipe_from_attachment(attachment: Dict[str, Any], api_key: str,
         tmp_path = Path(tmp_file.name)
 
     try:
-        # Process image
+        # Process image with verbose logging for CloudWatch
         logger.info(f"Processing image: {attachment['filename']}")
         processor = RecipeProcessor(
             api_key=api_key,
-            model=os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022'),  # Default to cheap model
+            model=DEFAULT_MODEL,
             apply_formatting=True
         )
-        markdown = processor.process_image(tmp_path, verbose=False)
+        markdown = processor.process_image(tmp_path, verbose=True)
 
-        # Push to Notion
+        # Push to Notion with verbose logging
         logger.info("Pushing recipe to Notion")
         notion_client = NotionRecipeClient(
             api_key=notion_api_key,
             database_id=notion_db_id
         )
-        page_url = notion_client.push_recipe(markdown, verbose=False)
+        page_url = notion_client.push_recipe(markdown, verbose=True)
 
         logger.info(f"Recipe created successfully: {page_url}")
         return page_url
@@ -254,22 +257,22 @@ def process_recipe_from_url(url: str, api_key: str,
     from recipe_duck.processor import RecipeProcessor
     from recipe_duck.notion_client import NotionRecipeClient
 
-    # Process URL
+    # Process URL with verbose logging for CloudWatch
     logger.info(f"Processing URL: {url}")
     processor = RecipeProcessor(
         api_key=api_key,
-        model=os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022'),  # Default to cheap model
+        model=DEFAULT_MODEL,
         apply_formatting=True
     )
-    markdown = processor.process_url(url, verbose=False)
+    markdown = processor.process_url(url, verbose=True)
 
-    # Push to Notion
+    # Push to Notion with verbose logging
     logger.info("Pushing recipe to Notion")
     notion_client = NotionRecipeClient(
         api_key=notion_api_key,
         database_id=notion_db_id
     )
-    page_url = notion_client.push_recipe(markdown, verbose=False)
+    page_url = notion_client.push_recipe(markdown, verbose=True)
 
     logger.info(f"Recipe created successfully: {page_url}")
     return page_url
