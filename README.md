@@ -1,10 +1,15 @@
 # Recipe Duck
 
-Convert recipe images to structured markdown using AI, with optional Notion database integration.
+Convert recipe images, URLs, and YouTube videos to structured markdown using AI, with optional Notion database integration.
 
 ## Overview
 
-Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them into a standardized markdown format. It uses Claude's vision capabilities to understand ingredients, instructions, and metadata from recipe images. You can save recipes as markdown files or push them directly to a Notion database.
+Recipe Duck extracts recipes from multiple sources and converts them into a standardized markdown format:
+- **Images** - Photos or screenshots of recipes using Claude's vision capabilities
+- **Recipe URLs** - Web pages from recipe sites (auto-detects print-friendly versions)
+- **YouTube Videos** - Extracts recipes from video description boxes
+
+You can save recipes as markdown files or push them directly to a Notion database.
 
 **Two ways to use Recipe Duck:**
 - **CLI Tool** - Run locally from the command line
@@ -18,6 +23,7 @@ Recipe Duck analyzes images of recipes (photos or screenshots) and extracts them
 
 - Python 3.11 or higher
 - Anthropic API key ([get one here](https://console.anthropic.com/))
+- (Optional) YouTube Data API v3 key for YouTube support (falls back to web scraping if not provided)
 - (Optional) Notion API key and database ID for Notion integration
 
 #### Installation
@@ -32,6 +38,7 @@ pip install -e .
 
 # Set up API keys
 export ANTHROPIC_API_KEY=your_api_key_here
+export YOUTUBE_API_KEY=your_youtube_key_here  # Optional, for YouTube API access
 export NOTION_API_KEY=your_notion_key_here  # Optional, for Notion integration
 export NOTION_DATABASE_ID=your_database_id_here  # Optional, for Notion integration
 ```
@@ -50,11 +57,14 @@ Deploy Recipe Duck to AWS Lambda for email-based recipe processing. See **[terra
 # Process an image
 recipe-duck recipe.jpg
 
+# Process a recipe URL
+recipe-duck https://www.budgetbytes.com/easy-dumpling-soup/
+
+# Process a YouTube video (extracts from description box)
+recipe-duck https://www.youtube.com/watch?v=VIDEO_ID
+
 # Specify output location
 recipe-duck recipe.jpg -o my-recipes/chocolate-cake.md
-
-# Process a URL
-recipe-duck https://www.budgetbytes.com/easy-dumpling-soup/
 
 # Push to Notion
 recipe-duck recipe.jpg --notion
@@ -66,7 +76,7 @@ recipe-duck recipe.jpg --cheap
 recipe-duck recipe.jpg -v
 
 # Combine options
-recipe-duck recipe.jpg --cheap --notion -v
+recipe-duck https://www.youtube.com/watch?v=VIDEO_ID --cheap --notion -v
 ```
 
 **Default Model:** Claude Haiku 4.5 (excellent quality, 1/3 cost and 2x+ speed of Sonnet)
@@ -80,11 +90,27 @@ recipe-duck recipe.jpg --debug --debug-dir ./debug
 
 Creates `debug_prompt_*.txt`, `debug_response_*.txt`, and final output for troubleshooting extraction issues.
 
-### Print-Friendly URL Detection
+### URL Processing
+
+#### Recipe Websites
 
 Recipe Duck automatically finds print-friendly versions of recipe pages (cleaner HTML, lower costs, better extraction). Uses pattern matching (`?print`, `?printview`, `/wprm_print/slug`), domain caching, and optional LLM fallback.
 
 **Disable:** `--no-print-prefer` | **Configure:** `RECIPE_DUCK_ENABLE_PRINT_SEARCH`, `RECIPE_DUCK_PRINT_DETECTION_MODEL`
+
+#### YouTube Videos
+
+Extract recipes from YouTube video description boxes. Supports multiple URL formats (`youtube.com/watch?v=`, `youtu.be/`, etc.).
+
+```bash
+# With YouTube API key (recommended for reliability)
+recipe-duck https://www.youtube.com/watch?v=VIDEO_ID --youtube-api-key YOUR_KEY
+
+# Without API key (uses web scraping fallback)
+recipe-duck https://www.youtube.com/watch?v=VIDEO_ID
+```
+
+**YouTube API Setup:** Get a free API key at [Google Cloud Console](https://console.cloud.google.com/) → Enable YouTube Data API v3 → Create credentials. Free tier: 10,000 units/day (1 unit per video).
 
 ### Notion Integration
 
@@ -109,12 +135,12 @@ mypy src/                 # Type check
 ## Output Format
 
 Recipes are structured with:
-- **Properties:** Cuisine, Protein, Course, Method, Effort (🔪/🔪🔪/🔪🔪🔪), Rating, Cook Time
+- **Properties:** Cuisine, Protein, Course, Method, Effort, Rating, Cook Time
 - **Ingredients:** 3-column tables (Ingredient | Measurement | Method) with optional subheadings for multi-component recipes
 - **Directions:** Numbered steps with optional subheadings for multi-phase recipes
 - **Sections:** Notes, Links, Nutrition, Photos
 
-**Units:** US Customary only (cups, tablespoons, ounces, etc.)
+**Units:** US Customary (cups, tablespoons, ounces, etc.)
 
 ## Formatting
 
