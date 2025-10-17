@@ -1,12 +1,12 @@
 """URL extraction module for recipe-duck.
 
-Handles fetching web recipe pages for LLM processing.
+Handles fetching web recipe pages for LLM processing, including YouTube videos.
 """
 
 import re
 import time
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from bs4 import BeautifulSoup
@@ -441,3 +441,329 @@ Print URL:"""
             if verbose:
                 print(f"[PRINT-URL] LLM detection failed: {str(e)}", file=sys.stderr)
             return None
+
+
+class YouTubeRecipeExtractor:
+    """Extract recipe information from YouTube video descriptions."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize the YouTube extractor.
+
+        Args:
+            api_key: Optional YouTube Data API v3 key for API access
+        """
+        self.api_key = api_key
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+
+    @staticmethod
+    def is_youtube_url(url: str) -> bool:
+        """Check if URL is a YouTube video URL.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if URL is a YouTube video
+        """
+        parsed = urlparse(url)
+        return parsed.netloc in (
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+            "youtu.be",
+        )
+
+    @staticmethod
+    def extract_video_id(url: str) -> Optional[str]:
+        """Extract video ID from YouTube URL.
+
+        Args:
+            url: YouTube URL
+
+        Returns:
+            Video ID or None if not found
+
+        Examples:
+            "https://www.youtube.com/watch?v=VIDEO_ID" -> "VIDEO_ID"
+            "https://youtu.be/VIDEO_ID" -> "VIDEO_ID"
+            "https://www.youtube.com/watch?v=VIDEO_ID&t=123s" -> "VIDEO_ID"
+        """
+        parsed = urlparse(url)
+
+        # Handle youtu.be short URLs
+        if parsed.netloc == "youtu.be":
+            # Video ID is the path (without leading slash)
+            video_id = parsed.path.strip("/")
+            return video_id if video_id else None
+
+        # Handle youtube.com URLs
+        if "youtube.com" in parsed.netloc:
+            # Check for /watch?v= format
+            if parsed.path == "/watch" or parsed.path.startswith("/watch"):
+                query_params = parse_qs(parsed.query)
+                video_ids = query_params.get("v", [])
+                return video_ids[0] if video_ids else None
+
+            # Check for /embed/ format
+            if parsed.path.startswith("/embed/"):
+                video_id = parsed.path.replace("/embed/", "").strip("/")
+                return video_id if video_id else None
+
+            # Check for /v/ format
+            if parsed.path.startswith("/v/"):
+                video_id = parsed.path.replace("/v/", "").strip("/")
+                return video_id if video_id else None
+
+        return None
+
+    def fetch_video_info(
+        self, url: str, verbose: bool = False
+    ) -> tuple[str, dict[str, str]]:
+        """Fetch video description and metadata from YouTube.
+
+        Args:
+            url: YouTube video URL
+            verbose: Enable verbose logging
+
+        Returns:
+            Tuple of (description_text, metadata_dict) where metadata includes:
+            - title: Video title
+            - channel: Channel name
+            - video_id: YouTube video ID
+            - url: Original URL
+
+        Raises:
+            Exception: If video info cannot be fetched
+        """
+        import sys
+
+        video_id = self.extract_video_id(url)
+        if not video_id:
+            raise Exception(f"Could not extract video ID from URL: {url}")
+
+        if verbose:
+            print(f"[YOUTUBE] Extracted video ID: {video_id}", file=sys.stderr)
+
+        # Try API method first if key available
+        if self.api_key:
+            try:
+                if verbose:
+                    print(f"[YOUTUBE] Attempting API fetch...", file=sys.stderr)
+                return self._fetch_via_api(video_id, verbose=verbose)
+            except Exception as e:
+                if verbose:
+                    print(
+                        f"[YOUTUBE] API fetch failed: {str(e)}, falling back to web scraping",
+                        file=sys.stderr,
+                    )
+
+        # Fall back to web scraping
+        if verbose:
+            print(f"[YOUTUBE] Using web scraping method...", file=sys.stderr)
+        return self._fetch_via_web(video_id, url, verbose=verbose)
+
+    def _fetch_via_api(
+        self, video_id: str, verbose: bool = False
+    ) -> tuple[str, dict[str, str]]:
+        """Fetch video info using YouTube Data API v3.
+
+        Args:
+            video_id: YouTube video ID
+            verbose: Enable verbose logging
+
+        Returns:
+            Tuple of (description, metadata)
+
+        Raises:
+            Exception: If API call fails
+        """
+        try:
+            from googleapiclient.discovery import build
+            from googleapiclient.errors import HttpError
+        except ImportError:
+            raise Exception(
+                "google-api-python-client not installed. "
+                "Install with: pip install google-api-python-client"
+            )
+
+        import sys
+
+        try:
+            youtube = build("youtube", "v3", developerKey=self.api_key)
+
+            # Request video snippet (includes title, description, channel)
+            request = youtube.videos().list(part="snippet", id=video_id)
+            response = request.execute()
+
+            if not response.get("items"):
+                raise Exception(f"Video not found: {video_id}")
+
+            video_data = response["items"][0]["snippet"]
+
+            description = video_data.get("description", "")
+            title = video_data.get("title", "Unknown Title")
+            channel = video_data.get("channelTitle", "Unknown Channel")
+
+            if verbose:
+                print(f"[YOUTUBE] ✓ API fetch successful", file=sys.stderr)
+                print(f"[YOUTUBE] Title: {title}", file=sys.stderr)
+                print(f"[YOUTUBE] Channel: {channel}", file=sys.stderr)
+                print(
+                    f"[YOUTUBE] Description length: {len(description)} characters",
+                    file=sys.stderr,
+                )
+
+            metadata = {
+                "title": title,
+                "channel": channel,
+                "video_id": video_id,
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+            }
+
+            return description, metadata
+
+        except HttpError as e:
+            raise Exception(f"YouTube API error: {e.resp.status} - {e.content}")
+        except Exception as e:
+            raise Exception(f"Failed to fetch from YouTube API: {str(e)}")
+
+    def _fetch_via_web(
+        self, video_id: str, url: str, verbose: bool = False
+    ) -> tuple[str, dict[str, str]]:
+        """Fetch video info by scraping YouTube webpage.
+
+        Args:
+            video_id: YouTube video ID
+            url: Original YouTube URL
+            verbose: Enable verbose logging
+
+        Returns:
+            Tuple of (description, metadata)
+
+        Raises:
+            Exception: If scraping fails
+
+        Note:
+            This is a fallback method and may be fragile due to YouTube's
+            dynamic page structure. API method is preferred.
+        """
+        import sys
+        import json
+
+        watch_url = f"https://www.youtube.com/watch?v={video_id}"
+
+        try:
+            response = requests.get(watch_url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+
+            html = response.text
+
+            # YouTube embeds video data in a JSON object within script tags
+            # Look for the ytInitialPlayerResponse or ytInitialData objects
+            description = ""
+            title = "Unknown Title"
+            channel = "Unknown Channel"
+
+            # Try to find ytInitialData (contains video metadata)
+            pattern = r"var ytInitialData = ({.*?});</script>"
+            match = re.search(pattern, html, re.DOTALL)
+
+            if match:
+                try:
+                    data = json.loads(match.group(1))
+
+                    # Navigate the complex YouTube data structure
+                    # Description is in: contents -> twoColumnWatchNextResults ->
+                    # results -> results -> contents -> videoSecondaryInfoRenderer ->
+                    # attributedDescription -> content
+                    results = (
+                        data.get("contents", {})
+                        .get("twoColumnWatchNextResults", {})
+                        .get("results", {})
+                        .get("results", {})
+                    )
+
+                    if results and "contents" in results:
+                        for content_item in results["contents"]:
+                            # Get title from videoPrimaryInfoRenderer
+                            if "videoPrimaryInfoRenderer" in content_item:
+                                title_obj = content_item["videoPrimaryInfoRenderer"].get(
+                                    "title", {}
+                                )
+                                if "runs" in title_obj:
+                                    title = title_obj["runs"][0].get("text", title)
+
+                            # Get description from videoSecondaryInfoRenderer
+                            if "videoSecondaryInfoRenderer" in content_item:
+                                secondary = content_item["videoSecondaryInfoRenderer"]
+
+                                # Get channel name
+                                owner = secondary.get("owner", {}).get(
+                                    "videoOwnerRenderer", {}
+                                )
+                                if "title" in owner and "runs" in owner["title"]:
+                                    channel = owner["title"]["runs"][0].get(
+                                        "text", channel
+                                    )
+
+                                # Get description
+                                desc_obj = secondary.get("attributedDescription", {})
+                                if "content" in desc_obj:
+                                    description = desc_obj["content"]
+
+                except json.JSONDecodeError:
+                    if verbose:
+                        print(
+                            f"[YOUTUBE] Failed to parse ytInitialData JSON",
+                            file=sys.stderr,
+                        )
+
+            # If we didn't get description, try a simpler approach
+            if not description:
+                # Look for meta tags (less reliable but works as last resort)
+                soup = BeautifulSoup(html, "lxml")
+                meta_desc = soup.find("meta", {"name": "description"})
+                if meta_desc and meta_desc.get("content"):
+                    description = meta_desc["content"]
+
+                # Try to get title from meta or title tag
+                if title == "Unknown Title":
+                    meta_title = soup.find("meta", {"property": "og:title"})
+                    if meta_title and meta_title.get("content"):
+                        title = meta_title["content"]
+                    else:
+                        title_tag = soup.find("title")
+                        if title_tag:
+                            title = title_tag.get_text().replace(" - YouTube", "")
+
+            if not description:
+                raise Exception(
+                    "Could not extract video description from YouTube page. "
+                    "Consider using YouTube API key for more reliable access."
+                )
+
+            if verbose:
+                print(f"[YOUTUBE] ✓ Web scraping successful", file=sys.stderr)
+                print(f"[YOUTUBE] Title: {title}", file=sys.stderr)
+                print(f"[YOUTUBE] Channel: {channel}", file=sys.stderr)
+                print(
+                    f"[YOUTUBE] Description length: {len(description)} characters",
+                    file=sys.stderr,
+                )
+
+            metadata = {
+                "title": title,
+                "channel": channel,
+                "video_id": video_id,
+                "url": watch_url,
+            }
+
+            return description, metadata
+
+        except requests.RequestException as e:
+            raise Exception(f"Failed to fetch YouTube page: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Failed to extract video info: {str(e)}")

@@ -125,6 +125,11 @@ def generate_filename_from_url(url: str) -> str:
     default=None,
     help="Model for print URL detection (default: claude-3-5-haiku-20241022)",
 )
+@click.option(
+    "--youtube-api-key",
+    envvar="YOUTUBE_API_KEY",
+    help="YouTube Data API v3 key (or set YOUTUBE_API_KEY env var). Falls back to web scraping if not provided.",
+)
 def main(
     input_path: str,
     output: Optional[Path],
@@ -140,11 +145,14 @@ def main(
     debug_dir: Optional[Path],
     no_print_prefer: bool,
     print_detection_model: Optional[str],
+    youtube_api_key: Optional[str],
 ) -> None:
     """Convert a recipe image or URL to structured markdown format.
 
-    Takes an image file or URL containing a recipe and uses AI to extract
+    Takes an image file, recipe URL, or YouTube video URL and uses AI to extract
     ingredients and instructions into a standardized markdown format.
+
+    For YouTube videos, the recipe will be extracted from the video description box.
     """
     if not api_key:
         raise click.ClickException(
@@ -216,6 +224,7 @@ def main(
         model=selected_model,
         apply_formatting=not no_format,
         print_url_config=print_url_config,
+        youtube_api_key=youtube_api_key,
     )
 
     try:

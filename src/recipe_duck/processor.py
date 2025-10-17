@@ -16,7 +16,7 @@ except ImportError:
 
 from recipe_duck.formatter import RecipeFormatter
 from recipe_duck.config import FormattingConfig, PrintURLConfig
-from recipe_duck.url_extractor import URLRecipeExtractor
+from recipe_duck.url_extractor import URLRecipeExtractor, YouTubeRecipeExtractor
 
 
 class RecipeProcessor:
@@ -30,6 +30,7 @@ class RecipeProcessor:
         formatting_config: Optional[FormattingConfig] = None,
         apply_formatting: bool = True,
         print_url_config: Optional[PrintURLConfig] = None,
+        youtube_api_key: Optional[str] = None,
     ):
         self.client = Anthropic(api_key=api_key)
         self.model = model
@@ -38,6 +39,7 @@ class RecipeProcessor:
         self.formatter = RecipeFormatter(formatting_config) if apply_formatting else None
         self.print_url_config = print_url_config or PrintURLConfig()
         self.url_extractor = URLRecipeExtractor(anthropic_client=self.client)
+        self.youtube_extractor = YouTubeRecipeExtractor(api_key=youtube_api_key)
 
     def _load_template(self, template_path: Path | None) -> str:
         """Load the master recipe template.
@@ -82,7 +84,7 @@ class RecipeProcessor:
         """Process a recipe from a URL.
 
         Args:
-            url: URL to recipe webpage
+            url: URL to recipe webpage (including YouTube videos)
             verbose: Enable verbose logging
             debug: Enable debug mode (shows prompts and responses)
             debug_dir: Directory to write debug files (default: current directory)
@@ -95,6 +97,11 @@ class RecipeProcessor:
             print(f"Fetching recipe from URL: {url}", file=sys.stderr)
 
         try:
+            # Check if this is a YouTube URL
+            if YouTubeRecipeExtractor.is_youtube_url(url):
+                return self._process_youtube_url(url, verbose=verbose, debug=debug, debug_dir=debug_dir)
+
+            # Otherwise, process as regular webpage
             # Try to find print-friendly version if enabled
             if self.print_url_config.enabled:
                 best_url, method = self.url_extractor.find_best_url(
@@ -175,6 +182,85 @@ class RecipeProcessor:
 
         except Exception as e:
             raise Exception(f"Failed to process recipe from URL: {str(e)}")
+
+    def _process_youtube_url(self, url: str, verbose: bool = False, debug: bool = False, debug_dir: Path | None = None) -> str:
+        """Process a recipe from a YouTube video URL.
+
+        Args:
+            url: YouTube video URL
+            verbose: Enable verbose logging
+            debug: Enable debug mode (shows prompts and responses)
+            debug_dir: Directory to write debug files (default: current directory)
+
+        Returns:
+            Markdown formatted recipe content
+        """
+        if verbose:
+            import sys
+            print(f"[YOUTUBE] Processing YouTube video", file=sys.stderr)
+
+        try:
+            # Fetch video description and metadata
+            description, metadata = self.youtube_extractor.fetch_video_info(url, verbose=verbose)
+
+            if verbose:
+                import sys
+                print(f"[YOUTUBE] Video: {metadata['title']}", file=sys.stderr)
+                print(f"[YOUTUBE] Channel: {metadata['channel']}", file=sys.stderr)
+                print(f"[YOUTUBE] Description length: {len(description)} characters", file=sys.stderr)
+
+            # Limit content to prevent token overflow
+            max_chars = 20000
+            original_length = len(description)
+            if len(description) > max_chars:
+                if verbose or debug:
+                    import sys
+                    print(
+                        f"WARNING: Description too long ({len(description)} chars), truncating to {max_chars}",
+                        file=sys.stderr,
+                    )
+                description = description[:max_chars]
+
+            # Add metadata context to the description for better extraction
+            content = f"""Video Title: {metadata['title']}
+Channel: {metadata['channel']}
+
+Description:
+{description}"""
+
+            if verbose:
+                import sys
+                print(f"Processing with AI model: {self.model}", file=sys.stderr)
+
+            # Send to Claude for processing with enhanced prompt for YouTube
+            markdown = self._extract_recipe_from_youtube(
+                content,
+                metadata['url'],
+                metadata,
+                verbose=verbose,
+                debug=debug,
+                debug_dir=debug_dir
+            )
+
+            if verbose:
+                import sys
+                print(f"Raw markdown length: {len(markdown)} characters", file=sys.stderr)
+
+            # Apply deterministic formatting if enabled
+            if self.apply_formatting and self.formatter:
+                if verbose:
+                    import sys
+                    print(f"Applying deterministic formatting...", file=sys.stderr)
+                markdown = self.formatter.format(markdown)
+                markdown = self.formatter.renumber_instructions(markdown)
+                if verbose:
+                    import sys
+                    print(f"Formatted markdown length: {len(markdown)} characters", file=sys.stderr)
+
+            return markdown
+
+        except Exception as e:
+            raise Exception(f"Failed to process recipe from YouTube: {str(e)}")
 
     def process_image(self, image_path: Path, verbose: bool = False, debug: bool = False, debug_dir: Path | None = None) -> str:
         """Process a recipe image and return markdown content.
@@ -560,6 +646,169 @@ IMPORTANT FORMATTING GUIDELINES:
             with open(debug_response_file, "w", encoding="utf-8") as f:
                 f.write("="*80 + "\n")
                 f.write("DEBUG MODE - URL EXTRACTION - API RESPONSE\n")
+                f.write("="*80 + "\n\n")
+                f.write(content)
+                f.write("\n\n" + "="*80 + "\n")
+
+            print(f"Debug: Response written to {debug_response_file}", file=sys.stderr)
+
+        return content
+
+    def _extract_recipe_from_youtube(
+        self, content: str, url: str, metadata: dict[str, str], verbose: bool = False, debug: bool = False, debug_dir: Path | None = None
+    ) -> str:
+        """Extract recipe from YouTube video description using Claude API.
+
+        Args:
+            content: YouTube video description text with metadata
+            url: Source YouTube URL
+            metadata: Video metadata (title, channel, etc.)
+            verbose: Enable verbose logging
+            debug: Enable debug mode (shows prompts and responses)
+            debug_dir: Directory to write debug files (default: current directory)
+
+        Returns:
+            Markdown formatted recipe
+        """
+        prompt = f"""Extract the recipe from the following YouTube video description and format it into a structured markdown format.
+
+Source: YouTube Video - {metadata['channel']}
+Video URL: {url}
+
+Content:
+{content}
+
+You MUST follow this exact template structure:
+
+{self.template}
+
+Instructions:
+- Extract ONLY recipe information from the description (ignore timestamps, social media links, promotional content, video timestamps)
+- YouTube descriptions often contain recipe info after intro text and before social links - focus on the recipe content
+- Fill in the template with the actual recipe information
+- Analyze the recipe and fill in the properties line with appropriate values:
+  * Cuisine: Choose from (Moroccan, Caribbean, Vietnamese, Turkish, Lebanese, Brazilian, Korean, Spanish, Thai, Indian, Southern, Greek, Mexican, French, American, Italian, Chinese)
+  * Protein: Choose from (Fish, Veg, Beef, Pork, Turkey, Chicken) - can be multiple separated by commas
+  * Course: Choose from (Dinner, Lunch, Breakfast, Sauce, Salad, Main Course, Soup, Dessert, Side, Appetizer, Beverage)
+  * Method: Choose from (Smoking, Baking, Blanching, Microwaving, Sautéing, Broiling, No-Cook, Marinating, Pickling, Braising, Steaming, Oven, Fry, Roast, Stove Top, Grill, BBQ, Crockpot) - can be multiple separated by commas
+  * Effort: Estimate effort level - use 🔪 for quick/easy recipes (under 1 hour), 🔪🔪 for medium effort (over 1 hour), 🔪🔪🔪 for high effort (multi-day, overnight, or long marinating)
+  * Rating: Leave blank (will be filled by user)
+  * Cook Time: Extract from description or estimate total cooking time in minutes
+- Use the exact section headers shown in the template including horizontal rules (---)
+- For Ingredients: Use a markdown table with three columns: Ingredient | Measurement | Method
+  * Ingredient column: ingredient name (e.g., "all-purpose flour", "butter", "onions")
+  * Measurement column: quantity and unit (e.g., "2 cups", "1 tablespoon", "3 ounces") - leave blank if no measurement
+  * IMPORTANT: Use US Customary units ONLY - do NOT include metric conversions (no grams, milliliters, etc.)
+  * Method column: preparation/state (e.g., "finely chopped", "melted", "room temperature") - leave blank if not applicable
+  * If the recipe has multiple sections (e.g., "For the dough", "For the filling"), use ### subheadings followed by separate tables
+- For Directions: Use numbered lists (1., 2., 3., etc.) with clear, actionable steps
+- If the recipe has distinct phases (e.g., "For the dough", "For the filling"), use ### subheadings to organize the directions
+- Add a blank line between each numbered direction step
+- For Links section: Include the YouTube video URL
+- For Photos, Notes sections: Only include the heading and horizontal rules. Add content ONLY if present in the description
+- For Nutrition section: Estimate macros per serving based on the ingredients and quantities. Calculate rough estimates for calories, protein, carbs, and fat
+- Be precise with ingredient amounts and direction details
+- If information is missing, omit that section entirely
+- Ensure measurements are clear and complete
+- Clean up any formatting issues from source
+- Do not add any text outside of this template structure
+- Include all sections: Ingredients, Directions, Notes, Links, Nutrition, and Photos with horizontal rules (---) between them
+
+CRITICAL - COMPLETENESS VERIFICATION:
+For Ingredients:
+1. First, locate and count ALL ingredients in the description's ingredients list
+2. Extract every single ingredient - do not skip any
+3. After extraction, verify your ingredient count matches the source
+4. If the description shows "X ingredients" or has a numbered/bulleted list, ensure you have exactly that many
+5. Double-check you haven't missed any ingredients, especially those at the end of lists
+
+For Directions:
+1. First, locate and count ALL direction steps in the description
+2. Extract every single step - do not skip any, especially not the final steps
+3. If the description has numbered directions, preserve the original numbering (don't renumber)
+4. After extraction, verify your step count matches the source
+5. Pay special attention to capture the LAST direction step - this is commonly missed
+6. Include all sub-steps and details from each direction
+
+IMPORTANT FORMATTING GUIDELINES:
+- Write out abbreviated units (e.g., "2 tbsp" → "2 tablespoon", "1 tsp" → "1 teaspoon")
+- Use ASCII fractions instead of unicode (e.g., "½" → "1/2", "¼" → "1/4")
+- Use explicit numbered steps for directions (1., 2., 3., etc.) with blank lines between steps
+- Pluralize units when quantity is greater than 1 (e.g., "2 tablespoons", "3 cups")
+- Always include horizontal rules (---) between sections"""
+
+        if debug:
+            import sys
+            from pathlib import Path
+
+            # Determine debug directory
+            base_dir = debug_dir if debug_dir else Path.cwd()
+
+            # Write prompt to file (includes the extracted YouTube content)
+            debug_prompt_file = base_dir / "debug_prompt_youtube.txt"
+            with open(debug_prompt_file, "w", encoding="utf-8") as f:
+                f.write("="*80 + "\n")
+                f.write("DEBUG MODE - YOUTUBE EXTRACTION - PROMPT\n")
+                f.write("="*80 + "\n\n")
+                f.write(prompt)
+                f.write("\n\n" + "="*80 + "\n")
+
+            print(f"Debug: Prompt (including YouTube video description) written to {debug_prompt_file}", file=sys.stderr)
+
+        import time
+
+        start_time = time.time()
+
+        message = self.client.messages.create(
+            model=self.model,
+            max_tokens=4000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+        )
+
+        elapsed = time.time() - start_time
+
+        if verbose:
+            import sys
+
+            print(f"API call completed in {elapsed:.2f}s", file=sys.stderr)
+            print(f"Input tokens: {message.usage.input_tokens}", file=sys.stderr)
+            print(f"Output tokens: {message.usage.output_tokens}", file=sys.stderr)
+
+            # Calculate approximate cost
+            if "sonnet" in self.model.lower():
+                input_cost = message.usage.input_tokens * 3 / 1_000_000
+                output_cost = message.usage.output_tokens * 15 / 1_000_000
+            elif "haiku" in self.model.lower():
+                input_cost = message.usage.input_tokens * 1 / 1_000_000
+                output_cost = message.usage.output_tokens * 5 / 1_000_000
+            else:
+                input_cost = 0
+                output_cost = 0
+
+            total_cost = input_cost + output_cost
+            if total_cost > 0:
+                print(f"Estimated cost: ${total_cost:.4f}", file=sys.stderr)
+
+        # Extract text from response
+        content = message.content[0].text if message.content else ""
+
+        if debug:
+            import sys
+            from pathlib import Path
+
+            # Determine debug directory
+            base_dir = debug_dir if debug_dir else Path.cwd()
+
+            # Write response to file
+            debug_response_file = base_dir / "debug_response_youtube.txt"
+            with open(debug_response_file, "w", encoding="utf-8") as f:
+                f.write("="*80 + "\n")
+                f.write("DEBUG MODE - YOUTUBE EXTRACTION - API RESPONSE\n")
                 f.write("="*80 + "\n\n")
                 f.write(content)
                 f.write("\n\n" + "="*80 + "\n")
