@@ -238,16 +238,28 @@ To deploy code changes:
 # 1. Build and push new image
 ./build_and_push_container.sh
 
-# 2. Update Lambda to use new image
+# 2. Update Lambda to use new image (REQUIRED - Terraform ignores image_uri changes)
 aws lambda update-function-code \
   --function-name recipe-duck-processor-prod \
   --image-uri ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/recipe-duck-lambda:latest
+
+# Wait for update to complete
+aws lambda wait function-updated \
+  --function-name recipe-duck-processor-prod
 ```
 
-Or use Terraform:
+**Important:** Terraform has `ignore_changes = [image_uri]` configured, which means:
+- Terraform will **NOT** automatically update the Lambda function when you push a new image
+- You **MUST** manually update the Lambda function using the AWS CLI command above
+- This allows for faster deployments without running a full `terraform apply`
+
+**Get the full image URI:**
 ```bash
-cd terraform
-terraform apply
+# The build script will display it, or get it from ECR:
+aws ecr describe-images \
+  --repository-name recipe-duck-lambda \
+  --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
+  --output text
 ```
 
 Lambda will automatically pull the latest image version on next invocation.

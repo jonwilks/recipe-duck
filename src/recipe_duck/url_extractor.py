@@ -234,23 +234,28 @@ class URLRecipeExtractor:
         parsed = urlparse(url)
         base_url = url.rstrip("/")
 
-        # Pattern 1: ?print (Serious Eats, many blogs)
-        if "?" in url:
-            candidates.append(f"{base_url}&print")
-        else:
-            candidates.append(f"{base_url}?print")
+        # Remove fragment identifier (e.g., #recipe) from base_url for cleaner patterns
+        if "#" in base_url:
+            base_url = base_url.split("#")[0]
 
-        # Pattern 2: ?printview (Allrecipes)
-        if "?" in url:
-            candidates.append(f"{base_url}&printview")
-        else:
-            candidates.append(f"{base_url}?printview")
-
-        # Pattern 3: WordPress Recipe Maker - /wprm_print/slug
+        # Pattern 1: WordPress Recipe Maker - /wprm_print/slug (HIGHEST PRIORITY)
+        # This is the most reliable pattern for WordPress recipe sites
         slug = self._extract_recipe_slug(url)
         if slug:
             base = f"{parsed.scheme}://{parsed.netloc}"
             candidates.append(f"{base}/wprm_print/{slug}")
+
+        # Pattern 2: ?print (Serious Eats, many blogs)
+        if "?" in base_url:
+            candidates.append(f"{base_url}&print")
+        else:
+            candidates.append(f"{base_url}?print")
+
+        # Pattern 3: ?printview (Allrecipes)
+        if "?" in base_url:
+            candidates.append(f"{base_url}&printview")
+        else:
+            candidates.append(f"{base_url}?printview")
 
         # Pattern 4: /print/ suffix
         candidates.append(f"{base_url}/print/")
@@ -294,18 +299,19 @@ class URLRecipeExtractor:
 
         Args:
             successful_url: URL that worked
-            original_url: Original URL
+            original_url: Original URL (unused but kept for API compatibility)
 
         Returns:
             Pattern type string
         """
-        # Check more specific patterns first (printview before print)
-        if "?printview" in successful_url or "&printview" in successful_url:
+        # Check more specific patterns first
+        # WordPress Recipe Maker is checked first as it's most reliable
+        if "/wprm_print/" in successful_url:
+            return "wprm_print"
+        elif "?printview" in successful_url or "&printview" in successful_url:
             return "query_printview"
         elif "?print" in successful_url or "&print" in successful_url:
             return "query_print"
-        elif "/wprm_print/" in successful_url:
-            return "wprm_print"
         elif successful_url.endswith("/print/"):
             return "suffix_print_slash"
         elif successful_url.endswith("/print"):
